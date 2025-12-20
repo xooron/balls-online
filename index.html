@@ -3,100 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>XORON PvP: Winter Edition</title>
+    <title>XORON PvP: Winter</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { 
-            --bg: #0a111e; 
-            --blue: #4facfe; 
-            --green: #00f2fe; 
-            --snow: #ffffff;
-            --frost: rgba(255, 255, 255, 0.1);
-        }
-
+        :root { --bg: #050a14; --blue: #4facfe; --green: #00f2fe; --frost: rgba(255, 255, 255, 0.08); }
+        
         body { 
-            margin: 0; 
-            background: radial-gradient(circle at top, #1a2a6c, #b21f1f, #fdbb2d); /* Будет перекрыто фоном */
-            background: var(--bg);
-            color: white; 
-            font-family: -apple-system, system-ui, sans-serif; 
-            overflow-y: auto; /* Разрешаем скролл */
+            margin: 0; background: var(--bg); color: white; 
+            font-family: -apple-system, sans-serif; 
+            overflow-x: hidden; overflow-y: auto; /* ВКЛЮЧАЕМ СКРОЛЛ */
             min-height: 100vh;
         }
 
-        /* АНИМАЦИЯ СНЕГА */
-        .snow-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-        .snowflake { position: absolute; top: -10px; color: white; font-size: 1em; user-select: none; animation: fall linear infinite; }
-        @keyframes fall {
-            to { transform: translateY(100vh) rotate(360deg); }
-        }
+        /* ЗИМНИЙ ФОН И СНЕГ */
+        .snow-wrapper { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+        .snowflake { position: absolute; top: -10px; color: white; animation: fall linear infinite; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
 
-        /* КОНТЕЙНЕР ПРИЛОЖЕНИЯ */
-        .app { position: relative; z-index: 2; padding-bottom: 50px; }
-        .app.locked { filter: blur(15px); pointer-events: none; }
+        .app { position: relative; z-index: 1; display: flex; flex-direction: column; width: 100%; }
 
         .header { 
-            padding: 20px 15px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            background: var(--frost);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 20px 15px; display: flex; justify-content: space-between; align-items: center; 
+            background: var(--frost); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1);
         }
+        .balance-box { background: linear-gradient(90deg, #4facfe, #00f2fe); padding: 8px 15px; border-radius: 20px; font-weight: 900; box-shadow: 0 0 15px rgba(79, 172, 254, 0.5); }
 
-        .balance-box { 
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            padding: 8px 18px; 
-            border-radius: 20px; 
-            font-weight: 900; 
-            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
-        }
-
-        .game-view { display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+        .game-view { padding: 20px 0; display: flex; flex-direction: column; align-items: center; }
         .viewport { 
-            width: 320px; height: 320px; 
-            position: relative; 
-            background: #000; 
-            border: 6px solid #2c3e50; 
-            border-radius: 30px; 
-            overflow: hidden; 
-            box-shadow: 0 0 40px rgba(79, 172, 254, 0.3);
+            width: 320px; height: 320px; position: relative; background: #000; 
+            border: 5px solid #1e3a5f; border-radius: 30px; overflow: hidden; 
+            box-shadow: 0 0 40px rgba(0, 242, 254, 0.2);
         }
 
-        /* КНОПКИ */
+        /* ПАНЕЛЬ СТАВОК */
         .bet-panel { padding: 20px; background: var(--frost); margin: 15px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.1); }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .chip { 
-            background: rgba(255,255,255,0.05); 
-            border: 1px solid rgba(255,255,255,0.2); 
-            padding: 12px 0; 
-            border-radius: 15px; 
-            color: #fff; 
-            font-weight: bold; 
-            transition: 0.3s;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); 
+            padding: 12px 0; border-radius: 12px; color: #fff; font-weight: bold; transition: 0.2s;
         }
         .chip.active { background: var(--blue); border-color: #fff; transform: scale(1.05); }
         .bet-btn { 
-            width: 100%; padding: 18px; border-radius: 20px; 
+            width: 100%; padding: 18px; border-radius: 18px; 
             background: linear-gradient(to right, #00ff88, #00f2fe); 
-            border: none; font-weight: 900; font-size: 18px; color: #05050a;
-            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+            border: none; font-weight: 900; font-size: 18px; color: #050a14;
         }
 
         /* ЛИДЕРБОРД */
-        .leaderboard { margin: 15px; background: var(--frost); border-radius: 25px; padding: 20px; }
-        .leader-item { 
-            display: flex; justify-content: space-between; padding: 10px 0; 
-            border-bottom: 1px solid rgba(255,255,255,0.05); 
-        }
+        .leaderboard { margin: 0 15px 30px 15px; background: var(--frost); border-radius: 25px; padding: 20px; }
+        .leader-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
 
-        .chat-btn { position: fixed; right: 20px; bottom: 80px; width: 60px; height: 60px; background: var(--blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 24px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-
-        /* АДМИНКА */
-        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10000; display: none; flex-direction: column; padding: 40px 20px; }
-        .admin-btn { padding: 15px; margin: 5px 0; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; }
+        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; padding: 50px 20px; }
+        .admin-btn { padding: 15px; margin-bottom: 10px; border-radius: 12px; border: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -104,37 +63,34 @@
 <div class="snow-wrapper" id="snow"></div>
 
 <div id="admin-panel" class="admin-modal">
-    <h2 style="color:var(--blue); text-align:center">❄️ WINTER ADMIN</h2>
-    <button class="admin-btn" style="background:var(--blue)" onclick="adminCmd('bot')">🤖 ДОБАВИТЬ БОТА</button>
-    <button class="admin-btn" style="background:#ff4757" onclick="adminCmd('bet_500k')">🔥 СТАВКА 500,000</button>
-    <button class="admin-btn" style="background:#2ed573" onclick="adminCmd('gift_all')">🎁 ВСЕМ ПО 5000</button>
-    <button class="admin-btn" style="background:#ffa502" onclick="adminCmd('reset')">♻️ СБРОС ИГРЫ</button>
+    <h2 style="color:var(--blue); text-align:center">WINTER ADMIN</h2>
+    <button class="admin-btn" style="background:var(--blue)" onclick="adminCmd('bot')">ДОБАВИТЬ БОТА</button>
+    <button class="admin-btn" style="background:#ff4757; color:white" onclick="adminCmd('bet_500k')">🔥 СТАВКА 500,000 🔥</button>
+    <button class="admin-btn" style="background:#2ed573" onclick="adminCmd('reset')">СБРОС ИГРЫ</button>
     <button onclick="toggleAdmin(false)" style="color:#fff; background:none; border:none; margin-top:30px">ЗАКРЫТЬ</button>
 </div>
 
 <div class="app" id="main-app">
     <div class="header">
-        <div style="display:flex; align-items:center; gap:12px" onclick="checkAdmin()">
-            <img id="u-avatar" src="" style="width:45px; height:45px; border-radius:50%; border:2px solid var(--blue); display:none">
+        <div style="display:flex; align-items:center; gap:10px" onclick="checkAdmin()">
+            <img id="u-avatar" src="" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--blue); display:none">
             <div>
-                <div id="u-name" style="font-weight:900; font-size: 16px;">Player</div>
-                <div style="font-size:10px; color:var(--green)">● <span id="online-val">0</span> ОНЛАЙН</div>
+                <div id="u-name" style="font-weight:900">Player</div>
+                <div style="font-size:10px; color:var(--green)">● <span id="online-val">0</span> ONLINE</div>
             </div>
         </div>
         <div class="balance-box">❄️ <span id="bal-val">0</span></div>
     </div>
 
     <div class="game-view">
-        <div style="font-size:32px; font-weight:900; text-shadow: 0 0 10px var(--blue);">
-            <span id="bank-val">0</span> <span style="font-size:14px; color:var(--blue)">COINS</span>
-        </div>
-        <div id="status-text" style="font-size:12px; margin:10px 0; color:var(--blue); font-weight:bold; letter-spacing: 1px;">ОЖИДАНИЕ...</div>
+        <div style="font-size:28px; font-weight:900; text-shadow: 0 0 10px var(--blue)"><span id="bank-val">0</span> COINS</div>
+        <div id="status-text" style="font-size:11px; margin:8px 0; color:var(--blue); font-weight:bold; letter-spacing:1px">ОЖИДАНИЕ...</div>
         
         <div class="viewport">
             <canvas id="gameCanvas" width="320" height="320"></canvas>
-            <div id="win-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.8); display:none; flex-direction:column; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
-                <img id="win-img" src="" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--green);">
-                <h2 id="win-name" style="margin:10px 0; text-align: center;"></h2>
+            <div id="win-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.85); display:none; flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(5px)">
+                <img id="win-img" src="" style="width:90px; height:90px; border-radius:50%; border:3px solid var(--green)">
+                <h2 id="win-name" style="margin:10px 0"></h2>
                 <h1 id="win-sum" style="color:var(--green); margin:0"></h1>
             </div>
         </div>
@@ -147,90 +103,71 @@
             <button class="chip" onclick="setBet(10000)">10К</button>
             <button class="chip" onclick="setBet(50000)">50К</button>
         </div>
-        <button id="main-bet-btn" class="bet-btn" onclick="confirmBet()">СДЕЛАТЬ СТАВКУ</button>
+        <button id="main-bet-btn" class="bet-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
     </div>
 
-    <div style="padding: 0 15px;">
-        <h3 style="margin-left: 10px;">🏆 ТОР 10 ЗИМЫ</h3>
-        <div id="leaderboard" class="leaderboard">
-            <!-- Сюда попадут игроки -->
-        </div>
-    </div>
-
-    <div class="chat-btn" onclick="toggleChat(true)">💬</div>
+    <div style="padding: 0 20px"><h3 style="color:var(--blue)">🏆 ТОП 10 ИГРОКОВ</h3></div>
+    <div id="leaderboard" class="leaderboard"></div>
+    
+    <div style="height: 50px;"></div> <!-- Отступ снизу для красоты -->
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
     const socket = io();
-    
-    // Снежинки
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Снег
     function createSnow() {
-        const snow = document.getElementById('snow');
-        for(let i=0; i<30; i++) {
+        const wrap = document.getElementById('snow');
+        for(let i=0; i<40; i++) {
             let s = document.createElement('div');
-            s.className = 'snowflake';
-            s.innerHTML = '❄';
+            s.className = 'snowflake'; s.innerHTML = '❄';
             s.style.left = Math.random() * 100 + 'vw';
             s.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            s.style.fontSize = (Math.random() * 10 + 10) + 'px';
             s.style.opacity = Math.random();
-            snow.appendChild(s);
+            wrap.appendChild(s);
         }
     }
     createSnow();
 
-    const tgUser = tg.initDataUnsafe?.user || { id: 1, first_name: "Игрок", username: "test" };
-    let user = { uid: 'tg_'+tgUser.id, name: tgUser.first_name, username: tgUser.username||"", avatar: tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`, id: tgUser.id };
+    const tgUser = tg.initDataUnsafe?.user || { id: 1, first_name: "GUEST", username: "test" };
+    let user = { uid: 'tg_'+tgUser.id, name: tgUser.first_name, username: tgUser.username||"", avatar: tgUser.photo_url || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${tgUser.id}`, id: tgUser.id };
 
-    let balance = parseFloat(localStorage.getItem('bal_v4_winter')) || 10000.0;
+    let balance = parseFloat(localStorage.getItem('bal_v4_winter')) || 50000.0;
     let selAmt = 1000;
+    let srv = { players: [], status: 'WAITING', bank: 0, ball: {x:160, y:160}, winner: null };
 
-    // Регулярно отправляем баланс серверу для лидерборда
-    setInterval(() => {
-        socket.emit('update_balance', { ...user, balance: balance });
-    }, 5000);
-
+    // Лидерборд
+    setInterval(() => { socket.emit('update_balance', { ...user, balance: balance }); }, 4000);
     socket.on('leaderboard', (list) => {
-        const html = list.map((p, i) => `
+        document.getElementById('leaderboard').innerHTML = list.map((p, i) => `
             <div class="leader-item">
                 <span>${i+1}. ${p.name}</span>
-                <b style="color:var(--blue)">${Math.floor(p.balance)}</b>
+                <b style="color:var(--green)">${Math.floor(p.balance)}</b>
             </div>
         `).join('');
-        document.getElementById('leaderboard').innerHTML = html || 'Загрузка...';
     });
 
     function setBet(a) { 
         selAmt = a; 
-        document.querySelectorAll('.chip').forEach(c => {
-            c.classList.toggle('active', parseInt(c.innerText.replace('К','000')) === a);
-        });
+        document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText.replace('К','000')) === a));
     }
 
     function confirmBet() {
         if(balance >= selAmt && selAmt >= 1000) {
-            balance -= selAmt;
-            localStorage.setItem('bal_v4_winter', balance);
+            balance -= selAmt; localStorage.setItem('bal_v4_winter', balance);
             socket.emit('bet', { ...user, bet: selAmt });
-            tg.HapticFeedback.impactOccurred('medium');
             updateUI();
-        } else if (selAmt < 1000) {
-            tg.showAlert("Минимальная ставка 1000 монет!");
-        } else {
-            tg.showAlert("Недостаточно монет!");
-        }
+        } else { tg.showAlert(selAmt < 1000 ? "Минимум 1000!" : "Нет денег!"); }
     }
 
     function checkAdmin() { if(user.username === 'maesexs') toggleAdmin(true); }
     function toggleAdmin(s) { document.getElementById('admin-panel').style.display = s?'flex':'none'; }
     function adminCmd(t) { socket.emit('admin_cmd', { ...user, type: t }); }
-
-    // --- ОСТАЛЬНАЯ ЛОГИКА (из вашего кода) ---
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    let srv = { players: [], status: 'WAITING', bank: 0, ball: {x:160, y:160}, winner: null };
-    let playerImages = {};
 
     socket.on('sync', (data) => {
         const oldStatus = srv.status;
@@ -240,27 +177,26 @@
             tg.HapticFeedback.notificationOccurred('success');
         }
         updateUI();
-        srv.players.forEach(p => { if(!playerImages[p.uid]) { const img = new Image(); img.src = p.avatar; playerImages[p.uid] = img; }});
     });
 
     function updateUI() {
         document.getElementById('bal-val').innerText = Math.floor(balance);
         document.getElementById('bank-val').innerText = Math.floor(srv.bank);
-        document.getElementById('online-val').innerText = srv.online || 0;
+        document.getElementById('online-val').innerText = srv.online;
         document.getElementById('u-name').innerText = user.name;
-        if(user.avatar) { document.getElementById('u-avatar').src = user.avatar; document.getElementById('u-avatar').style.display='block'; }
+        if(tgUser.photo_url) { document.getElementById('u-avatar').src = user.avatar; document.getElementById('u-avatar').style.display='block'; }
         
         const st = document.getElementById('status-text');
-        if(srv.status === 'WAITING') st.innerText = `ОЖИДАНИЕ ИГРОКОВ...`;
-        else if(srv.status === 'COUNTDOWN') st.innerText = `СТАРТ ЧЕРЕЗ: ${srv.timer}С`;
-        else if(srv.status === 'WINNER') st.innerText = `ПОБЕДА!`;
-        else st.innerText = `ИГРА ИДЕТ...`;
+        if(srv.status === 'WAITING') st.innerText = `НУЖНО МИНИМУМ 2 ИГРОКА`;
+        else if(srv.status === 'COUNTDOWN') st.innerText = `СТАРТ ЧЕРЕЗ: ${srv.timer} СЕК`;
+        else if(srv.status === 'WINNER') st.innerText = `РАУНД ЗАВЕРШЕН`;
+        else st.innerText = `ШАР В ДВИЖЕНИИ...`;
 
         document.getElementById('win-overlay').style.display = (srv.status === 'WINNER'?'flex':'none');
         if(srv.winner) {
             document.getElementById('win-img').src = srv.winner.avatar;
             document.getElementById('win-name').innerText = srv.winner.name;
-            document.getElementById('win-sum').innerText = `+${Math.floor(srv.bank)} ❄️`;
+            document.getElementById('win-sum').innerText = `+${Math.floor(srv.bank)} COINS`;
         }
     }
 
@@ -272,13 +208,16 @@
             ctx.fillRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
         });
         if (['SPAWNED', 'AIMING', 'FLYING', 'WINNER'].includes(srv.status)) {
+            if(srv.status === 'AIMING') {
+                ctx.save(); ctx.translate(srv.ball.x, srv.ball.y); ctx.rotate(srv.arrowAngle);
+                ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(30,0); ctx.stroke(); ctx.restore();
+            }
             ctx.beginPath(); ctx.arc(srv.ball.x, srv.ball.y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = "#fff"; ctx.shadowBlur = 15; ctx.shadowColor = "#fff"; ctx.fill();
+            ctx.fillStyle = "#fff"; ctx.shadowBlur = 15; ctx.shadowColor = "#00f2fe"; ctx.fill();
         }
         requestAnimationFrame(draw);
     }
-    draw();
-    updateUI();
+    draw(); setBet(1000);
 </script>
 </body>
 </html>
