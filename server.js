@@ -8,7 +8,7 @@ app.use(express.static(__dirname));
 const COLORS = ['#FF4757', '#2ED573', '#1E90FF', '#ECCC68', '#70A1FF', '#FF6348', '#00f2fe', '#ffa502', '#ced6e0', '#5352ed'];
 const CANVAS_SIZE = 320;
 const BALL_RADIUS = 10;
-const LUCKY_SIZE = 25; // Размер лаки блока
+const LUCKY_SIZE = 25; 
 
 let game = {
     players: [],
@@ -16,13 +16,13 @@ let game = {
     status: 'WAITING',
     timer: 20,
     ball: { x: 160, y: 160, vx: 0, vy: 0 },
-    luckyBlock: { x: 0, y: 0, active: false, type: null }, // Данные о блоке
+    luckyBlock: { x: 0, y: 0, active: false, type: null }, 
     arrowAngle: 0,
     winner: null,
-    online: 0
+    online: 0,
+    launchTime: 0 // Время, когда шар был запущен
 };
 
-// Функция перемешивания территорий
 function calculateChaosTerritories() {
     if (game.players.length === 0) return;
     let playersToAssign = [...game.players].sort(() => Math.random() - 0.5);
@@ -45,31 +45,25 @@ function calculateChaosTerritories() {
     });
 }
 
-// Проверка столкновения шара с лаки блоком
 function checkLuckyCollision() {
     if (!game.luckyBlock.active) return;
-    
-    // Простая проверка пересечения квадрата и круга
     const dx = game.ball.x - (game.luckyBlock.x + LUCKY_SIZE / 2);
     const dy = game.ball.y - (game.luckyBlock.y + LUCKY_SIZE / 2);
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < BALL_RADIUS + LUCKY_SIZE / 2) {
-        game.luckyBlock.active = false; // Блок исчезает
+        game.luckyBlock.active = false;
         const type = game.luckyBlock.type;
-        
-        // Отправляем всем сигнал, что блок задет (для уведомления на экране)
         io.emit('lucky_hit', type);
 
-        // Активируем эффект через 3 секунды
         setTimeout(() => {
             if (type === 'SWAP') {
-                calculateChaosTerritories(); // Меняем территории местами
+                calculateChaosTerritories();
             } else if (type === 'STOP') {
-                game.ball.vx = 0; // Резко останавливаем шар
+                game.ball.vx = 0;
                 game.ball.vy = 0;
             }
-            io.emit('sync', game); // Синхронизируем изменения
+            io.emit('sync', game);
         }, 3000);
     }
 }
@@ -88,15 +82,29 @@ setInterval(() => {
         if (game.ball.y <= BALL_RADIUS) { game.ball.y = BALL_RADIUS + 0.1; game.ball.vy *= -0.8; }
         if (game.ball.y >= CANVAS_SIZE - BALL_RADIUS) { game.ball.y = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vy *= -0.8; }
         
-        // ТРЕНИЕ: Изменено на 0.985 (шар останавливается быстрее и меньше "скользит")
-        game.ball.vx *= 0.985; 
-        game.ball.vy *= 0.985;
+        // --- ЛОГИКА ТАЙМЕРА ПОЛЕТА (13 секунд) ---
+        const elapsed = Date.now() - game.launchTime;
 
-        // Проверяем, не наехал ли шар на лаки блок
+        if (elapsed < 11000) {
+            // Первые 11 секунд: шар летает быстро (почти нет трения)
+            game.ball.vx *= 0.998;
+            game.ball.vy *= 0.998;
+        } 
+        else if (elapsed < 13000) {
+            // Последние 2 секунды: шар плавно замедляется ("докатывается")
+            game.ball.vx *= 0.92;
+            game.ball.vy *= 0.92;
+        } 
+        else {
+            // Спустя 13 секунд: полная остановка
+            game.ball.vx = 0;
+            game.ball.vy = 0;
+        }
+
         checkLuckyCollision();
 
-        // Проверка остановки
-        if (Math.abs(game.ball.vx) < 0.05 && Math.abs(game.ball.vy) < 0.05) {
+        // Проверка финиша: если прошло больше 12.5 сек и шар почти замер
+        if (elapsed > 12500 && Math.abs(game.ball.vx) < 0.05 && Math.abs(game.ball.vy) < 0.05) {
             game.status = 'WINNER';
             game.winner = game.players.find(p => p.rect && game.ball.x >= p.rect.x && game.ball.x <= p.rect.x + p.rect.w && game.ball.y >= p.rect.y && game.ball.y <= p.rect.y + p.rect.h) || game.players[0];
             
@@ -114,7 +122,7 @@ setInterval(() => {
     io.emit('sync', game);
 }, 20);
 
-// ЛОГИКА ТАЙМЕРОВ И СОСТОЯНИЙ (раз в секунду)
+// ЛОГИКА ТАЙМЕРОВ (раз в секунду)
 setInterval(() => {
     if (game.status === 'WAITING' && game.players.length >= 2) { 
         game.status = 'COUNTDOWN'; 
@@ -130,12 +138,11 @@ setInterval(() => {
                 game.status = 'SPAWNED'; 
                 game.ball = { x: 60 + Math.random()*200, y: 60 + Math.random()*200, vx: 0, vy: 0 };
                 
-                // СПАВН ЛАКИ БЛОКА в случайном месте
                 game.luckyBlock = {
                     x: 40 + Math.random() * (CANVAS_SIZE - 80),
                     y: 40 + Math.random() * (CANVAS_SIZE - 80),
                     active: true,
-                    type: Math.random() > 0.5 ? 'SWAP' : 'STOP' // 50/50 эффект
+                    type: Math.random() > 0.5 ? 'SWAP' : 'STOP'
                 };
 
                 calculateChaosTerritories(); 
@@ -149,7 +156,9 @@ setInterval(() => {
         setTimeout(() => { 
             if(game.status === 'AIMING') { 
                 game.status = 'FLYING'; 
-                const f = 10 + Math.random() * 4; 
+                game.launchTime = Date.now(); // Фиксируем время старта
+                // Увеличиваем силу удара, чтобы хватило на 13 секунд
+                const f = 14 + Math.random() * 4; 
                 game.ball.vx = Math.cos(game.arrowAngle) * f; 
                 game.ball.vy = Math.sin(game.arrowAngle) * f; 
             } 
@@ -178,4 +187,4 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(process.env.PORT || 3000, () => console.log('ICE ARENA v9 (LuckyBlock) Started'));
+http.listen(process.env.PORT || 3000, () => console.log('ICE ARENA v9 (13s Flight) Started'));
