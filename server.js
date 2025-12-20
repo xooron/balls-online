@@ -27,7 +27,8 @@ function calculateChaosTerritories() {
     let horizontal = Math.random() > 0.5;
 
     playersToAssign.forEach((p, i) => {
-        let ratio = p.bet / (playersToAssign.slice(i).reduce((a, b) => a + b.bet, 0));
+        let totalRemaining = playersToAssign.slice(i).reduce((a, b) => a + b.bet, 0);
+        let ratio = p.bet / totalRemaining;
         if (horizontal) {
             let h = curH * ratio;
             p.rect = { x: curX, y: curY, w: curW, h: h };
@@ -41,20 +42,25 @@ function calculateChaosTerritories() {
     });
 }
 
+// ФИЗИКА (50 FPS)
 setInterval(() => {
     if (game.status === 'AIMING') game.arrowAngle += 0.12;
     if (game.status === 'FLYING') {
         game.ball.x += game.ball.vx;
         game.ball.y += game.ball.vy;
 
-        if (game.ball.x <= BALL_RADIUS) { game.ball.x = BALL_RADIUS + 0.1; game.ball.vx *= -0.9; }
-        if (game.ball.x >= CANVAS_SIZE - BALL_RADIUS) { game.ball.x = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vx *= -0.9; }
-        if (game.ball.y <= BALL_RADIUS) { game.ball.y = BALL_RADIUS + 0.1; game.ball.vy *= -0.9; }
-        if (game.ball.y >= CANVAS_SIZE - BALL_RADIUS) { game.ball.y = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vy *= -0.9; }
+        // Отскоки
+        if (game.ball.x <= BALL_RADIUS) { game.ball.x = BALL_RADIUS + 0.1; game.ball.vx *= -0.8; }
+        if (game.ball.x >= CANVAS_SIZE - BALL_RADIUS) { game.ball.x = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vx *= -0.8; }
+        if (game.ball.y <= BALL_RADIUS) { game.ball.y = BALL_RADIUS + 0.1; game.ball.vy *= -0.8; }
+        if (game.ball.y >= CANVAS_SIZE - BALL_RADIUS) { game.ball.y = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vy *= -0.8; }
 
-        game.ball.vx *= 0.993; game.ball.vy *= 0.993;
+        // ТРЕНИЕ (0.996 делает полет долгим ~15 сек)
+        game.ball.vx *= 0.996; 
+        game.ball.vy *= 0.996;
 
-        if (Math.abs(game.ball.vx) < 0.1 && Math.abs(game.ball.vy) < 0.1) {
+        // Остановка
+        if (Math.abs(game.ball.vx) < 0.05 && Math.abs(game.ball.vy) < 0.05) {
             game.status = 'WINNER';
             game.winner = game.players.find(p => 
                 p.rect && game.ball.x >= p.rect.x && game.ball.x <= p.rect.x + p.rect.w &&
@@ -71,9 +77,8 @@ setInterval(() => {
 }, 20);
 
 setInterval(() => {
-    if (game.status === 'WAITING') {
-        if (game.players.length >= 2) { game.status = 'COUNTDOWN'; game.timer = 20; }
-    } else if (game.status === 'COUNTDOWN') {
+    if (game.status === 'WAITING' && game.players.length >= 2) { game.status = 'COUNTDOWN'; game.timer = 20; }
+    else if (game.status === 'COUNTDOWN') {
         if (game.players.length < 2) { game.status = 'WAITING'; game.timer = 20; }
         else {
             game.timer--;
@@ -89,7 +94,7 @@ setInterval(() => {
         setTimeout(() => {
             if(game.status === 'AIMING') {
                 game.status = 'FLYING';
-                const f = 13 + Math.random() * 6;
+                const f = 10 + Math.random() * 4; // Начальная скорость
                 game.ball.vx = Math.cos(game.arrowAngle) * f;
                 game.ball.vy = Math.sin(game.arrowAngle) * f;
             }
@@ -99,7 +104,7 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
     socket.on('bet', (d) => {
-        if (d.bet < 1000 || (game.status !== 'WAITING' && game.status !== 'COUNTDOWN')) return;
+        if (d.bet < 0.5 || (game.status !== 'WAITING' && game.status !== 'COUNTDOWN')) return;
         let p = game.players.find(x => x.uid === d.uid);
         if (p) p.bet += d.bet;
         else game.players.push({ ...d, color: COLORS[game.players.length % COLORS.length] });
@@ -108,18 +113,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('admin_cmd', (d) => {
-        if (d.username !== 'maesexs' && d.id !== 1046170668) return; // Проверка по нику или ID
-        if (d.type === 'gift_all') io.emit('admin_gift', 10000);
+        if (d.id !== 1046170668 && d.username !== 'maesexs') return;
+        if (d.type === 'gift_all') io.emit('admin_gift', 50);
         if (d.type === 'bet_500k') {
-            game.players.push({ uid: 'admin_'+Math.random(), name: '👑 ADMIN 👑', bet: 500000, avatar: d.avatar, color: '#FFFFFF' });
-            game.bank += 500000; calculateChaosTerritories();
+            game.players.push({ uid: 'adm_'+Math.random(), name: '👑 ADMIN', bet: 100, avatar: d.avatar, color: '#FFFFFF' });
+            game.bank += 100; calculateChaosTerritories();
         }
         if (d.type === 'bot') {
             const id = Math.random();
-            game.players.push({ uid: 'bot_'+id, name: '🤖 Bot', bet: 1000, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+id, color: COLORS[game.players.length % COLORS.length] });
-            game.bank += 1000; calculateChaosTerritories();
+            game.players.push({ uid: 'bot_'+id, name: '🤖 Бот', bet: 1, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+id, color: COLORS[game.players.length % COLORS.length] });
+            game.bank += 1; calculateChaosTerritories();
         }
     });
 });
 
-http.listen(3000, () => console.log('ICE ARENA Server Running'));
+http.listen(3000, () => console.log('ICE ARENA v7 Started'));
