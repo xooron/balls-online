@@ -9,59 +9,42 @@
     <style>
         :root { --bg: #030816; --accent: #00f2fe; --frost: rgba(255, 255, 255, 0.08); }
         body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow-x: hidden; overflow-y: auto; min-height: 100vh; }
-
         .snow-wrapper { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(circle at 50% -20%, #1e3a5f 0%, #030816 70%); }
         .snowflake { position: absolute; top: -10px; color: white; animation: fall linear infinite; opacity: 0.5; }
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
-
         .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; background: rgba(3,8,22,0.8); backdrop-filter: blur(10px); }
         .logo-text { font-size: 22px; font-weight: 900; text-shadow: 0 0 15px var(--accent); cursor: pointer; }
         .balance-pill { background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent); font-weight: 900; }
-
         .page { display: none; padding-bottom: 120px; position: relative; z-index: 5; }
         .page.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .arena-container { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
         .bank-value { font-size: 36px; font-weight: 900; margin-bottom: 15px; }
-
         .canvas-wrapper { position: relative; width: 320px; height: 320px; border: 4px solid #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 0 40px rgba(0, 242, 254, 0.3); }
         #gameCanvas { width: 320px; height: 320px; display: block; }
-
         .bet-panel { padding: 20px; background: var(--frost); margin: 15px; border-radius: 25px; backdrop-filter: blur(10px); }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 12px 0; border-radius: 12px; font-weight: bold; text-align: center; cursor: pointer; }
         .chip.active { background: var(--accent); color: #000; }
-        
         .main-btn { width: 100%; padding: 18px; border-radius: 20px; border: none; font-weight: 900; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #030816; font-size: 18px; cursor: pointer; }
-
-        .players-card { margin: 0 15px 30px 15px; padding: 20px; background: var(--frost); border-radius: 25px; }
         .player-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .p-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; margin-right: 12px; }
-
         .navbar { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(3, 8, 22, 0.95); display: flex; border-top: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); z-index: 1000; }
         .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #555; cursor: pointer; }
         .nav-btn.active { color: var(--accent); }
         .nav-btn svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
-
-        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 5000; display: none; flex-direction: column; padding: 60px 20px; }
         #win-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        /* Админка в самом низу, изначально пустая */
+        #admin-root { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 9999; display: none; flex-direction: column; padding: 60px 20px; }
     </style>
 </head>
 <body>
 
 <div class="snow-wrapper" id="snow"></div>
-
-<div id="admin-panel" class="admin-modal">
-    <h1 style="color:var(--accent); text-align:center">ICE ADMIN</h1>
-    <button class="main-btn" style="background:#ff4757; color:white; margin-bottom:15px" onclick="adminCmd('bet_500k')">🚀 ТЕСТ СТАВКА</button>
-    <button class="main-btn" style="background:gold; margin-bottom:15px" onclick="adminCmd('gift_all')">🎁 ВСЕМ ПО 50 TON</button>
-    <button class="main-btn" style="background:var(--accent); margin-bottom:15px" onclick="adminCmd('bot')">🤖 ДОБАВИТЬ БОТА</button>
-    <button class="main-btn" style="background:#333; color:white" onclick="toggleAdmin(false)">ЗАКРЫТЬ</button>
-</div>
+<div id="admin-root"></div> <!-- Контейнер для динамической админки -->
 
 <div class="header">
-    <div class="logo-area" onclick="checkAdmin()">
+    <div class="logo-area" onclick="tryOpenAdmin()">
         <span class="logo-text">ICE ARENA</span>
         <div style="font-size:10px; color:var(--accent); font-weight:bold">● <span id="online-val">0</span> ОНЛАЙН</div>
     </div>
@@ -81,7 +64,6 @@
         </div>
         <div id="status-text" style="margin: 15px 0; font-weight: bold; color: var(--accent);">ОЖИДАНИЕ...</div>
     </div>
-
     <div class="bet-panel">
         <div class="chips">
             <div class="chip active" onclick="setBet(0.5, this)">0.5</div>
@@ -91,8 +73,7 @@
         </div>
         <button class="main-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
     </div>
-
-    <div class="players-card">
+    <div style="margin: 0 15px; padding: 20px; background: var(--frost); border-radius: 25px;">
         <h3 style="margin:0 0 15px 0">УЧАСТНИКИ РАУНДА</h3>
         <div id="current-players">Ставок нет</div>
     </div>
@@ -102,7 +83,7 @@
     <div style="text-align: center; padding: 40px 20px;">
         <img id="u-pic" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--accent);" src="">
         <h2 id="u-name" style="margin: 15px 0;">Загрузка...</h2>
-        <button class="main-btn" id="bonus-btn" onclick="takeBonus()">ПОЛУЧИТЬ 10 TON ❄️</button>
+        <button class="main-btn" id="bonus-btn" onclick="takeBonus()">ПОЛУЧИТЬ 20 TON ❄️</button>
         <p id="bonus-timer" style="font-weight:bold; color:var(--accent)"></p>
     </div>
 </div>
@@ -126,16 +107,18 @@
     const dpr = window.devicePixelRatio || 1;
     canvas.width = 320 * dpr; canvas.height = 320 * dpr; ctx.scale(dpr, dpr);
 
-    const tgData = tg.initDataUnsafe?.user || { id: 1046170668, first_name: "GUEST", username: "maesexs" };
+    const tgData = tg.initDataUnsafe?.user || { id: 0, first_name: "GUEST", username: "" };
     let user = { uid: 'tg_'+tgData.id, name: tgData.first_name, avatar: tgData.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgData.id}`, username: tgData.username||"", id: tgData.id };
 
-    // ОБНУЛЕНИЕ (Версия v7)
-    if (!localStorage.getItem('init_v7')) {
-        localStorage.setItem('bal_v7', 10.0); 
-        localStorage.setItem('init_v7', 'true');
+    const ADMIN_ID = 1046170668;
+    const BONUS_INTERVAL = 15 * 60 * 1000; // 15 минут
+
+    if (!localStorage.getItem('init_v8')) {
+        localStorage.setItem('bal_v8', 20.0); 
+        localStorage.setItem('init_v8', 'true');
     }
-    let balance = parseFloat(localStorage.getItem('bal_v7')) || 0;
-    let lastBonus = parseInt(localStorage.getItem('bonus_v7')) || 0;
+    let balance = parseFloat(localStorage.getItem('bal_v8')) || 0;
+    let lastBonus = parseInt(localStorage.getItem('bonus_v8')) || 0;
     let selAmt = 0.5;
     let srv = { players: [], status: 'WAITING', bank: 0, ball: {x:160, y:160} };
     let pImgs = {};
@@ -143,7 +126,7 @@
     function createSnow() {
         const w = document.getElementById('snow');
         for(let i=0; i<40; i++) {
-            let s = document.createElement('div');
+            let s = document.createElement('snowflake');
             s.className = 'snowflake'; s.innerHTML = '❄';
             s.style.left = Math.random() * 100 + 'vw';
             s.style.animationDuration = (Math.random() * 3 + 4) + 's';
@@ -151,6 +134,24 @@
         }
     }
     createSnow();
+
+    // Безопасное открытие админки
+    function tryOpenAdmin() {
+        if (user.id === ADMIN_ID || user.username === 'maesexs') {
+            const root = document.getElementById('admin-root');
+            if (!root.innerHTML) {
+                root.innerHTML = `
+                    <h1 style="color:var(--accent); text-align:center">ICE ADMIN</h1>
+                    <button class="main-btn" style="background:gold; margin-bottom:15px" onclick="adminCmd('gift_all')">🎁 ВСЕМ ПО 50 TON</button>
+                    <button class="main-btn" style="background:var(--accent); margin-bottom:15px" onclick="adminCmd('bot')">🤖 ДОБАВИТЬ БОТА</button>
+                    <button class="main-btn" style="background:#333; color:white" onclick="document.getElementById('admin-root').style.display='none'">ЗАКРЫТЬ</button>
+                `;
+            }
+            root.style.display = 'flex';
+        }
+    }
+
+    function adminCmd(t) { socket.emit('admin_cmd', { ...user, type: t }); }
 
     function showTab(tab, el) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -160,18 +161,12 @@
         if(tab === 'profile') updateProfile();
     }
 
-    function checkAdmin() {
-        if (user.username.toLowerCase() === 'maesexs' || user.id === 1046170668) toggleAdmin(true);
-    }
-    function toggleAdmin(s) { document.getElementById('admin-panel').style.display = s ? 'flex' : 'none'; }
-    function adminCmd(t) { socket.emit('admin_cmd', { ...user, type: t }); if(t !== 'bot') toggleAdmin(false); }
-
     function setBet(a, el) { selAmt = a; document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
     
     function confirmBet() {
         if (balance < selAmt) return tg.showAlert("Недостаточно TON");
         if (srv.status !== 'WAITING' && srv.status !== 'COUNTDOWN') return;
-        balance -= selAmt; localStorage.setItem('bal_v7', balance);
+        balance -= selAmt; localStorage.setItem('bal_v8', balance);
         socket.emit('bet', { ...user, bet: selAmt });
         updateUI();
     }
@@ -179,45 +174,33 @@
     socket.on('sync', (data) => {
         const oldStatus = srv.status;
         srv = data;
-        if (oldStatus !== 'WINNER' && srv.status === 'WINNER') {
-            if (srv.winner?.uid === user.uid) {
-                balance += srv.bank; localStorage.setItem('bal_v7', balance);
-                tg.HapticFeedback.notificationOccurred('success');
-            }
+        if (oldStatus !== 'WINNER' && srv.status === 'WINNER' && srv.winner?.uid === user.uid) {
+            balance += srv.bank; localStorage.setItem('bal_v8', balance);
+            tg.HapticFeedback.notificationOccurred('success');
         }
         updateUI();
         srv.players.forEach(p => { if(!pImgs[p.uid]) { const img = new Image(); img.src = p.avatar; pImgs[p.uid] = img; }});
     });
 
-    socket.on('admin_gift', (amt) => { balance += amt; localStorage.setItem('bal_v7', balance); updateUI(); });
+    socket.on('admin_gift', (amt) => { balance += amt; localStorage.setItem('bal_v8', balance); updateUI(); });
 
     function updateUI() {
         document.getElementById('bal-val').innerText = balance.toFixed(1);
         document.getElementById('bank-val').innerText = srv.bank.toFixed(1);
         document.getElementById('online-val').innerText = srv.online;
-        
         const st = document.getElementById('status-text');
         if(srv.status === 'WAITING') st.innerText = "ОЖИДАНИЕ ИГРОКОВ (2+)";
         else if(srv.status === 'COUNTDOWN') st.innerText = `СТАРТ ЧЕРЕЗ ${srv.timer} СЕК`;
         else st.innerText = "ШАР В ДВИЖЕНИИ";
-
         document.getElementById('win-overlay').style.display = (srv.status === 'WINNER'?'flex':'none');
         if(srv.winner) {
             document.getElementById('win-img').src = srv.winner.avatar;
             document.getElementById('win-name').innerText = srv.winner.name;
             document.getElementById('win-sum').innerText = `+${srv.bank.toFixed(1)} TON`;
         }
-
         const playersHtml = srv.players.sort((a,b)=>b.bet-a.bet).map(p => {
             const chance = ((p.bet / srv.bank) * 100).toFixed(1);
-            return `<div class="player-row">
-                <img src="${p.avatar}" class="p-avatar" style="border-color:${p.color}">
-                <div style="flex:1">
-                    <div style="font-weight:bold; color:${p.color}">${p.name}</div>
-                    <div style="font-size:12px; opacity:0.6">${p.bet.toFixed(1)} TON</div>
-                </div>
-                <div style="font-weight:900; color:var(--accent)">${chance}%</div>
-            </div>`;
+            return `<div class="player-row"><img src="${p.avatar}" class="p-avatar" style="border-color:${p.color}"><div style="flex:1"><div style="font-weight:bold; color:${p.color}">${p.name}</div><div style="font-size:12px; opacity:0.6">${p.bet.toFixed(1)} TON</div></div><div style="font-weight:900; color:var(--accent)">${chance}%</div></div>`;
         }).join('');
         document.getElementById('current-players').innerHTML = playersHtml || "Ставок нет";
     }
@@ -225,17 +208,24 @@
     function updateProfile() {
         document.getElementById('u-pic').src = user.avatar;
         document.getElementById('u-name').innerText = user.name;
-        const rem = 3600000 - (Date.now() - lastBonus);
+        const rem = BONUS_INTERVAL - (Date.now() - lastBonus);
         if(rem > 0) {
             document.getElementById('bonus-btn').style.display = 'none';
-            document.getElementById('bonus-timer').innerText = `Бонус через: ${Math.ceil(rem/60000)}м`;
+            const mins = Math.floor(rem / 60000);
+            const secs = Math.floor((rem % 60000) / 1000);
+            document.getElementById('bonus-timer').innerText = `Бонус через: ${mins}м ${secs}с`;
         } else {
             document.getElementById('bonus-btn').style.display = 'block';
             document.getElementById('bonus-timer').innerText = '';
         }
     }
 
-    function takeBonus() { balance += 10; lastBonus = Date.now(); localStorage.setItem('bal_v7', balance); localStorage.setItem('bonus_v7', lastBonus); updateProfile(); updateUI(); }
+    function takeBonus() {
+        if (Date.now() - lastBonus < BONUS_INTERVAL) return;
+        balance += 20; lastBonus = Date.now();
+        localStorage.setItem('bal_v8', balance); localStorage.setItem('bonus_v8', lastBonus);
+        updateProfile(); updateUI();
+    }
 
     function draw() {
         ctx.clearRect(0, 0, 320, 320);
@@ -252,24 +242,18 @@
                 ctx.restore();
             }
         });
-
         if (['SPAWNED', 'AIMING', 'FLYING', 'WINNER'].includes(srv.status)) {
-            ctx.save();
-            ctx.shadowBlur = 30; ctx.shadowColor = "#00f2fe";
-            ctx.fillStyle = "#ffffff";
-            ctx.beginPath(); ctx.arc(srv.ball.x, srv.ball.y, 10, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
-
+            ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = "#00f2fe"; ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(srv.ball.x, srv.ball.y, 10, 0, Math.PI*2); ctx.fill(); ctx.restore();
             if(srv.status === 'AIMING') {
-                ctx.save();
-                ctx.translate(srv.ball.x, srv.ball.y); ctx.rotate(srv.arrowAngle);
+                ctx.save(); ctx.translate(srv.ball.x, srv.ball.y); ctx.rotate(srv.arrowAngle);
                 ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.lineCap = 'round';
-                ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(45, 0); ctx.stroke();
-                ctx.restore();
+                ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(45, 0); ctx.stroke(); ctx.restore();
             }
         }
         requestAnimationFrame(draw);
     }
+    setInterval(updateProfile, 1000); // Обновление таймера каждую секунду
     draw(); updateUI();
 </script>
 </body>
