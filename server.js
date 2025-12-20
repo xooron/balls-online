@@ -1,7 +1,3 @@
-assi, [20.12.2025 3:48]
-http.listen(PORT, () => console.log(Server started on port ${PORT}));
-
-assi, [20.12.2025 3:49]
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
@@ -72,4 +68,9 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+    console.log('Server started on port ' + PORT);
+});
+const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => console.log(Server started on port ${PORT}));
+
