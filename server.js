@@ -12,8 +12,8 @@ const BALL_RADIUS = 10;
 let game = {
     players: [],
     bank: 0,
-    timeLeft: 0,
     status: 'WAITING', // WAITING, COUNTDOWN, SPAWNED, AIMING, FLYING, WINNER
+    timer: 0,
     ball: { x: 160, y: 160, vx: 0, vy: 0 },
     arrowAngle: 0,
     winner: null
@@ -33,10 +33,10 @@ function calculateTerritories() {
     });
 }
 
-// Игровой цикл физики (50 FPS)
+// Физика и анимация (50 FPS)
 setInterval(() => {
     if (game.status === 'AIMING') {
-        game.arrowAngle += 0.15; // Вращение стрелки на сервере
+        game.arrowAngle += 0.12; 
     }
 
     if (game.status === 'FLYING') {
@@ -59,35 +59,32 @@ setInterval(() => {
     io.emit('sync', game);
 }, 20);
 
-// Таймеры и логика состояний
+// Логика фаз (1 FPS)
 setInterval(() => {
-    // 1. Условие начала отсчета (минимум 2 игрока)
     if (game.status === 'WAITING' && game.players.length >= 2) {
         game.status = 'COUNTDOWN';
-        game.timeLeft = 10;
+        game.timer = 10;
     }
 
     if (game.status === 'COUNTDOWN') {
-        game.timeLeft--;
-        if (game.timeLeft <= 0) {
-            // 2. Появление шара (Phase: SPAWNED)
+        game.timer--;
+        if (game.timer <= 0) {
             game.status = 'SPAWNED';
             game.ball = { x: 60 + Math.random() * 200, y: 60 + Math.random() * 200, vx: 0, vy: 0 };
-            game.timeLeft = 3; 
+            game.timer = 3;
+            calculateTerritories();
         }
     } else if (game.status === 'SPAWNED') {
-        game.timeLeft--;
-        if (game.timeLeft <= 0) {
-            // 3. Появление стрелки (Phase: AIMING)
+        game.timer--;
+        if (game.timer <= 0) {
             game.status = 'AIMING';
-            game.timeLeft = 2;
+            game.timer = 2;
         }
     } else if (game.status === 'AIMING') {
-        game.timeLeft--;
-        if (game.timeLeft <= 0) {
-            // 4. Запуск (Phase: FLYING)
+        game.timer--;
+        if (game.timer <= 0) {
             game.status = 'FLYING';
-            const force = 14 + Math.random() * 4;
+            const force = 13 + Math.random() * 5;
             game.ball.vx = Math.cos(game.arrowAngle) * force;
             game.ball.vy = Math.sin(game.arrowAngle) * force;
         }
@@ -95,11 +92,7 @@ setInterval(() => {
 }, 1000);
 
 function resetGame() {
-    game.players = [];
-    game.bank = 0;
-    game.status = 'WAITING';
-    game.winner = null;
-    game.timeLeft = 0;
+    game.players = []; game.bank = 0; game.status = 'WAITING'; game.winner = null; game.timer = 0;
 }
 
 io.on('connection', (socket) => {
@@ -112,25 +105,20 @@ io.on('connection', (socket) => {
         calculateTerritories();
     });
 
-    // АДМИН КОМАНДЫ
     socket.on('admin_cmd', (data) => {
-        if (data.admin_name !== 'Xорон') return; // Жесткая проверка по нику
+        // Проверка по username @maesexs
+        if (data.username !== 'maesexs') return;
         
-        if (data.type === 'add_bot') {
+        if (data.type === 'bot') {
             const id = Math.floor(Math.random()*999);
             game.players.push({
                 uid: 'bot_'+id, name: '🤖 Бот '+id, bet: 50,
-                avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
+                avatar: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${id}`,
                 color: COLORS[game.players.length % COLORS.length]
             });
             game.bank += 50;
             calculateTerritories();
-        } else if (data.type === 'reset') {
-            resetGame();
-        } else if (data.type === 'force_start' && game.players.length >= 2) {
-            game.status = 'COUNTDOWN';
-            game.timeLeft = 3;
-        }
+        } else if (data.type === 'reset') resetGame();
     });
 });
 
