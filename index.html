@@ -39,7 +39,7 @@
         .profile-avatar { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--blue); margin-bottom: 15px; }
         .profile-input { width: 80%; background: #112; border: 1px solid #333; padding: 12px; border-radius: 10px; color: #fff; margin-bottom: 10px; text-align: center; }
         
-        #win-overlay { background: rgba(0,0,0,0.9); }
+        #win-overlay { background: rgba(0,0,0,0.9); z-index: 2000; }
         .w-avatar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--green); margin-bottom: 10px; }
     </style>
 </head>
@@ -58,11 +58,13 @@
         <div class="status-line"><span id="status-txt">WAITING</span>: <span id="timer">15</span>s</div>
         <div class="game-viewport">
             <canvas id="gameCanvas" width="330" height="330"></canvas>
+            
+            <!-- ОКНО ПОБЕДЫ -->
             <div id="win-overlay" class="overlay">
                 <img src="" id="win-img" class="w-avatar">
                 <h2 id="win-name" style="margin:5px 0">Winner</h2>
                 <h1 id="win-sum" style="color:var(--blue); margin:5px 0">+0.00 TON</h1>
-                <button onclick="document.getElementById('win-overlay').style.display='none'" style="margin-top:15px; padding:10px 25px; background:var(--blue); border:none; border-radius:10px; font-weight:bold;">CLOSE</button>
+                <button onclick="closeWin()" style="margin-top:15px; padding:12px 30px; background:var(--blue); border:none; border-radius:10px; font-weight:bold; color:black; cursor:pointer;">CLOSE</button>
             </div>
         </div>
         <div class="bet-panel">
@@ -96,7 +98,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Инициализация аккаунта
+    // Аккаунт игрока
     let user = JSON.parse(localStorage.getItem('balls_user')) || {
         uid: Math.floor(100000 + Math.random() * 900000).toString(),
         name: 'Player' + Math.floor(Math.random()*999),
@@ -107,9 +109,11 @@
     let bank = 0, players = [], state = 'BETTING', timeLeft = 15, selAmt = 0;
     let ball = { x: 165, y: 165, vx: 0, vy: 0, r: 8 };
     let startTime = 0;
-    let images = {}; // Кеш аватарок
+    let images = {}; 
+    let winShownInThisRound = false; // Флаг для контроля показа окна 1 раз
 
     function saveAccount() { localStorage.setItem('balls_user', JSON.stringify(user)); }
+    
     function loadProfileInputs() {
         document.getElementById('p-name').value = user.name;
         document.getElementById('p-ava').value = user.avatar;
@@ -126,17 +130,24 @@
     });
 
     socket.on('start_game', (data) => {
+        closeWin(); // Авто-закрытие при старте
+        winShownInThisRound = false; 
         state = 'FLYING'; startTime = Date.now();
         ball.x = 165; ball.y = 165;
         ball.vx = Math.cos(data.angle) * 28;
         ball.vy = Math.sin(data.angle) * 28;
-        document.getElementById('win-overlay').style.display = 'none';
     });
 
     socket.on('reset_game', () => {
-        state = 'BETTING'; ball.vx = 0; ball.vy = 0;
-        document.getElementById('win-overlay').style.display = 'none';
+        closeWin(); // Авто-закрытие при сбросе
+        state = 'BETTING'; ball.vx = 0; ball.vy = 0; ball.x = 165; ball.y = 165;
+        winShownInThisRound = false;
     });
+
+    // Функция закрытия окна
+    function closeWin() {
+        document.getElementById('win-overlay').style.display = 'none';
+    }
 
     function updateUI() {
         document.getElementById('bank-val').innerText = bank.toFixed(2);
@@ -185,7 +196,7 @@
     function draw() {
         ctx.clearRect(0, 0, 330, 330);
         
-        // 1. Рисуем сектора
+        // Сектора
         if (bank > 0) {
             let currentA = 0;
             players.forEach(p => {
@@ -195,7 +206,7 @@
                 ctx.fillStyle = p.color;
                 ctx.globalAlpha = 0.8; ctx.fill(); ctx.globalAlpha = 1;
 
-                // Рисуем аватарку на секторе
+                // Аватарки
                 const midA = currentA + slice / 2;
                 const ax = 165 + Math.cos(midA) * 110;
                 const ay = 165 + Math.sin(midA) * 110;
@@ -215,21 +226,14 @@
             });
         }
 
-        // 2. Движение шарика в квадрате
+        // Шарик
         if (state === 'FLYING') {
             ball.x += ball.vx; ball.y += ball.vy;
 
-            // Отскоки от стенок (Квадрат 330x330)
-            if (ball.x <= ball.r || ball.x >= 330 - ball.r) {
-                ball.vx *= -1;
-                ball.x = ball.x <= ball.r ? ball.r : 330 - ball.r;
-            }
-            if (ball.y <= ball.r || ball.y >= 330 - ball.r) {
-                ball.vy *= -1;
-                ball.y = ball.y <= ball.r ? ball.r : 330 - ball.r;
-            }
+            if (ball.x <= ball.r || ball.x >= 330 - ball.r) { ball.vx *= -1; ball.x = ball.x <= ball.r ? ball.r : 330 - ball.r; }
+            if (ball.y <= ball.r || ball.y >= 330 - ball.r) { ball.vy *= -1; ball.y = ball.y <= ball.r ? ball.r : 330 - ball.r; }
 
-            ball.vx *= 0.994; ball.vy *= 0.994; // Трение
+            ball.vx *= 0.994; ball.vy *= 0.994;
 
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
             ctx.fillStyle = '#fff'; ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
@@ -244,8 +248,10 @@
     }
 
     function showWinner() {
-        if(state === 'END') return;
+        if(winShownInThisRound || state === 'END') return;
+        winShownInThisRound = true;
         state = 'END';
+        
         let angle = Math.atan2(ball.y - 165, ball.x - 165);
         if (angle < 0) angle += Math.PI * 2;
         
@@ -257,15 +263,17 @@
             currentA += slice;
         }
 
-        if(winner.uid === user.uid) {
+        if(winner && winner.uid === user.uid) {
             user.balance += bank;
             saveAccount();
         }
 
-        document.getElementById('win-overlay').style.display = 'flex';
-        document.getElementById('win-img').src = winner.avatar;
-        document.getElementById('win-name').innerText = winner.name;
-        document.getElementById('win-sum').innerText = `+${bank.toFixed(2)} TON`;
+        if(winner) {
+            document.getElementById('win-overlay').style.display = 'flex';
+            document.getElementById('win-img').src = winner.avatar;
+            document.getElementById('win-name').innerText = winner.name;
+            document.getElementById('win-sum').innerText = `+${bank.toFixed(2)} TON`;
+        }
         updateUI();
     }
 
