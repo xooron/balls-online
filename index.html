@@ -9,98 +9,133 @@
     <style>
         :root { --bg: #030816; --accent: #00f2fe; --frost: rgba(255, 255, 255, 0.08); }
         body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow-x: hidden; overflow-y: auto; min-height: 100vh; }
+
+        /* Заглушка для браузера */
+        #browser-lock { 
+            position: fixed; inset: 0; background: var(--bg); z-index: 10000; 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            text-align: center; padding: 30px; 
+        }
+
         .snow-wrapper { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(circle at 50% -20%, #1e3a5f 0%, #030816 70%); }
         .snowflake { position: absolute; top: -10px; color: white; animation: fall linear infinite; opacity: 0.5; }
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+
         .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; background: rgba(3,8,22,0.8); backdrop-filter: blur(10px); }
         .logo-text { font-size: 22px; font-weight: 900; text-shadow: 0 0 15px var(--accent); cursor: pointer; }
         .balance-pill { background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent); font-weight: 900; }
+
         .page { display: none; padding-bottom: 120px; position: relative; z-index: 5; }
         .page.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
         .arena-container { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
         .bank-value { font-size: 36px; font-weight: 900; margin-bottom: 15px; }
+
         .canvas-wrapper { position: relative; width: 320px; height: 320px; border: 4px solid #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 0 40px rgba(0, 242, 254, 0.3); }
         #gameCanvas { width: 320px; height: 320px; display: block; }
+
         .bet-panel { padding: 20px; background: var(--frost); margin: 15px; border-radius: 25px; backdrop-filter: blur(10px); }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 12px 0; border-radius: 12px; font-weight: bold; text-align: center; cursor: pointer; }
         .chip.active { background: var(--accent); color: #000; }
+        
         .main-btn { width: 100%; padding: 18px; border-radius: 20px; border: none; font-weight: 900; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #030816; font-size: 18px; cursor: pointer; }
+
         .player-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .p-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; margin-right: 12px; }
+
         .navbar { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(3, 8, 22, 0.95); display: flex; border-top: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); z-index: 1000; }
         .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #555; cursor: pointer; }
         .nav-btn.active { color: var(--accent); }
         .nav-btn svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
-        #win-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
-        /* Админка в самом низу, изначально пустая */
+
         #admin-root { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 9999; display: none; flex-direction: column; padding: 60px 20px; }
+        #win-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
 
-<div class="snow-wrapper" id="snow"></div>
-<div id="admin-root"></div> <!-- Контейнер для динамической админки -->
-
-<div class="header">
-    <div class="logo-area" onclick="tryOpenAdmin()">
-        <span class="logo-text">ICE ARENA</span>
-        <div style="font-size:10px; color:var(--accent); font-weight:bold">● <span id="online-val">0</span> ОНЛАЙН</div>
-    </div>
-    <div class="balance-pill">❄️ <span id="bal-val">0</span> TON</div>
+<!-- ЭКРАН БЛОКИРОВКИ -->
+<div id="browser-lock">
+    <h1 style="color:var(--accent); text-shadow: 0 0 15px var(--accent);">ICE ARENA</h1>
+    <p style="opacity:0.8; margin-bottom:30px;">Эта игра доступна только через официальное приложение Telegram.</p>
+    <a href="https://t.me/XORON_BOT" class="main-btn" style="text-decoration:none; display:inline-block; width:auto; padding:15px 40px;">ОТКРЫТЬ В TELEGRAM</a>
 </div>
 
-<div id="page-arena" class="page active">
-    <div class="arena-container">
-        <div class="bank-value"><span id="bank-val">0</span> <span style="font-size: 18px; color: var(--accent);">TON</span></div>
-        <div class="canvas-wrapper">
-            <canvas id="gameCanvas"></canvas>
-            <div id="win-overlay">
-                <img id="win-img" src="" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--accent);">
-                <h2 id="win-name" style="margin:15px 0 5px 0"></h2>
-                <h1 id="win-sum" style="color:var(--accent); margin:0"></h1>
+<div id="game-content">
+    <div class="snow-wrapper" id="snow"></div>
+    <div id="admin-root"></div>
+
+    <div class="header">
+        <div class="logo-area" onclick="tryOpenAdmin()">
+            <span class="logo-text">ICE ARENA</span>
+            <div style="font-size:10px; color:var(--accent); font-weight:bold">● <span id="online-val">0</span> ОНЛАЙН</div>
+        </div>
+        <div class="balance-pill">❄️ <span id="bal-val">0</span> TON</div>
+    </div>
+
+    <div id="page-arena" class="page active">
+        <div class="arena-container">
+            <div class="bank-value"><span id="bank-val">0</span> <span style="font-size: 18px; color: var(--accent);">TON</span></div>
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas"></canvas>
+                <div id="win-overlay">
+                    <img id="win-img" src="" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--accent);">
+                    <h2 id="win-name" style="margin:15px 0 5px 0"></h2>
+                    <h1 id="win-sum" style="color:var(--accent); margin:0"></h1>
+                </div>
             </div>
+            <div id="status-text" style="margin: 15px 0; font-weight: bold; color: var(--accent);">ОЖИДАНИЕ...</div>
         </div>
-        <div id="status-text" style="margin: 15px 0; font-weight: bold; color: var(--accent);">ОЖИДАНИЕ...</div>
-    </div>
-    <div class="bet-panel">
-        <div class="chips">
-            <div class="chip active" onclick="setBet(0.5, this)">0.5</div>
-            <div class="chip" onclick="setBet(1, this)">1</div>
-            <div class="chip" onclick="setBet(5, this)">5</div>
-            <div class="chip" onclick="setBet(10, this)">10</div>
+        <div class="bet-panel">
+            <div class="chips">
+                <div class="chip active" onclick="setBet(0.5, this)">0.5</div>
+                <div class="chip" onclick="setBet(1, this)">1</div>
+                <div class="chip" onclick="setBet(5, this)">5</div>
+                <div class="chip" onclick="setBet(10, this)">10</div>
+            </div>
+            <button class="main-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
         </div>
-        <button class="main-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
+        <div style="margin: 0 15px; padding: 20px; background: var(--frost); border-radius: 25px;">
+            <h3 style="margin:0 0 15px 0">УЧАСТНИКИ РАУНДА</h3>
+            <div id="current-players">Ставок нет</div>
+        </div>
     </div>
-    <div style="margin: 0 15px; padding: 20px; background: var(--frost); border-radius: 25px;">
-        <h3 style="margin:0 0 15px 0">УЧАСТНИКИ РАУНДА</h3>
-        <div id="current-players">Ставок нет</div>
-    </div>
-</div>
 
-<div id="page-profile" class="page">
-    <div style="text-align: center; padding: 40px 20px;">
-        <img id="u-pic" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--accent);" src="">
-        <h2 id="u-name" style="margin: 15px 0;">Загрузка...</h2>
-        <button class="main-btn" id="bonus-btn" onclick="takeBonus()">ПОЛУЧИТЬ 20 TON ❄️</button>
-        <p id="bonus-timer" style="font-weight:bold; color:var(--accent)"></p>
+    <div id="page-profile" class="page">
+        <div style="text-align: center; padding: 40px 20px;">
+            <img id="u-pic" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--accent);" src="">
+            <h2 id="u-name" style="margin: 15px 0;">Загрузка...</h2>
+            <button class="main-btn" id="bonus-btn" onclick="takeBonus()">ПОЛУЧИТЬ 20 TON ❄️</button>
+            <p id="bonus-timer" style="font-weight:bold; color:var(--accent)"></p>
+        </div>
     </div>
-</div>
 
-<div class="navbar">
-    <div class="nav-btn active" onclick="showTab('arena', this)">
-        <svg viewBox="0 0 24 24"><path d="M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.41 21.94 12.21 22 12 22C11.79 22 11.59 21.94 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.59 2.06 11.79 2 12 2C12.21 2 12.41 2.06 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5Z"/></svg>
-        <span>Арена</span>
-    </div>
-    <div class="nav-btn" onclick="showTab('profile', this)">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-        <span>Профиль</span>
+    <div class="navbar">
+        <div class="nav-btn active" onclick="showTab('arena', this)">
+            <svg viewBox="0 0 24 24"><path d="M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.41 21.94 12.21 22 12 22C11.79 22 11.59 21.94 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.59 2.06 11.79 2 12 2C12.21 2 12.41 2.06 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5Z"/></svg>
+            <span>Арена</span>
+        </div>
+        <div class="nav-btn" onclick="showTab('profile', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            <span>Профиль</span>
+        </div>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
+
+    // ПРОВЕРКА ОКРУЖЕНИЯ
+    if (!tg.initData || tg.initData === "") {
+        document.getElementById('game-content').style.display = 'none';
+        document.getElementById('browser-lock').style.display = 'flex';
+    } else {
+        tg.expand();
+        tg.ready();
+    }
+
     const socket = io();
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -108,10 +143,16 @@
     canvas.width = 320 * dpr; canvas.height = 320 * dpr; ctx.scale(dpr, dpr);
 
     const tgData = tg.initDataUnsafe?.user || { id: 0, first_name: "GUEST", username: "" };
-    let user = { uid: 'tg_'+tgData.id, name: tgData.first_name, avatar: tgData.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgData.id}`, username: tgData.username||"", id: tgData.id };
+    let user = { 
+        uid: 'tg_'+tgData.id, 
+        name: tgData.first_name, 
+        avatar: tgData.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${tgData.id}`, 
+        username: tgData.username||"", 
+        id: tgData.id 
+    };
 
     const ADMIN_ID = 1046170668;
-    const BONUS_INTERVAL = 15 * 60 * 1000; // 15 минут
+    const BONUS_INTERVAL = 15 * 60 * 1000;
 
     if (!localStorage.getItem('init_v8')) {
         localStorage.setItem('bal_v8', 20.0); 
@@ -126,7 +167,7 @@
     function createSnow() {
         const w = document.getElementById('snow');
         for(let i=0; i<40; i++) {
-            let s = document.createElement('snowflake');
+            let s = document.createElement('div');
             s.className = 'snowflake'; s.innerHTML = '❄';
             s.style.left = Math.random() * 100 + 'vw';
             s.style.animationDuration = (Math.random() * 3 + 4) + 's';
@@ -135,7 +176,6 @@
     }
     createSnow();
 
-    // Безопасное открытие админки
     function tryOpenAdmin() {
         if (user.id === ADMIN_ID || user.username === 'maesexs') {
             const root = document.getElementById('admin-root');
@@ -253,7 +293,7 @@
         }
         requestAnimationFrame(draw);
     }
-    setInterval(updateProfile, 1000); // Обновление таймера каждую секунду
+    setInterval(updateProfile, 1000);
     draw(); updateUI();
 </script>
 </body>
