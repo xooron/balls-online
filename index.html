@@ -10,55 +10,44 @@
         body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; overflow: hidden; }
         .app { width: 100%; max-width: 400px; height: 100vh; background: var(--bg); display: flex; flex-direction: column; position: relative; }
         
-        .nav { position: absolute; bottom: 0; left: 0; right: 0; height: 65px; background: #0a0a15; display: flex; border-top: 1px solid #1a1a2e; z-index: 100; }
-        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #555; cursor: pointer; }
-        .nav-btn.active { color: var(--blue); }
-
-        .view { display: none; flex-direction: column; height: 100%; padding-bottom: 70px; overflow-y: auto; }
-        .view.active { display: flex; }
-
         .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .balance-group { display: flex; align-items: center; gap: 5px; }
-        .balance { background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 15px; border: 1px solid var(--blue); font-weight: 900; font-size: 14px; }
-        .bonus-btn { background: var(--blue); color: #000; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 20px; }
+        .balance { background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--blue); font-weight: 900; cursor: pointer; }
+        
+        .game-viewport { width: 320px; height: 320px; margin: 0 auto; position: relative; border: 4px solid #1a1a2e; background: #000; overflow: hidden; }
+        
+        /* Анимация загрузки */
+        .loader-wrap { position: absolute; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.8); z-index: 5; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(0,210,255,0.1); border-top: 4px solid var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* КВАДРАТНЫЙ ВИЗУАЛ */
-        .game-viewport { width: 320px; height: 320px; margin: 0 auto; position: relative; border: 4px solid #1a1a2e; background: #000; flex-shrink: 0; }
-        .status-line { text-align: center; margin: 5px 0; font-size: 12px; color: var(--blue); font-weight: bold; }
+        .status-line { text-align: center; margin: 10px 0; font-size: 12px; color: var(--blue); font-weight: bold; }
 
-        .bet-panel { padding: 10px 15px; flex-shrink: 0; }
+        .bet-panel { padding: 10px 15px; }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
-        .chip { background: #111122; border: 2px solid transparent; padding: 12px 0; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
+        .chip { background: #111122; border: 2px solid transparent; padding: 12px 0; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; text-align: center; }
         .chip.active { border-color: var(--blue); }
         .bet-btn { width: 100%; padding: 18px; border-radius: 15px; background: var(--green); border: none; font-weight: 900; font-size: 18px; cursor: pointer; }
 
-        .players-list { padding: 10px 20px; background: rgba(0,0,0,0.3); }
-        .p-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #161625; font-size: 13px; }
-        .p-chance { color: #777; font-size: 11px; margin-left: 5px; }
+        .players-list { flex-grow: 1; overflow-y: auto; padding: 0 20px; }
+        .p-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #161625; font-size: 13px; }
 
-        .history-list { padding: 10px 20px; }
-        .h-item { display: flex; align-items: center; gap: 10px; background: #111; padding: 8px; border-radius: 10px; margin-bottom: 8px; font-size: 12px; }
-        .h-ava { width: 30px; height: 30px; border-radius: 50%; }
-
-        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; text-align: center; }
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; text-align: center; }
         
-        .profile { padding: 30px; align-items: center; }
-        .prof-ava { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--blue); margin-bottom: 10px; }
+        .nav { height: 60px; background: #0a0a15; display: flex; border-top: 1px solid #1a1a2e; }
+        .nav-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #555; cursor: pointer; font-weight: bold; }
+        .nav-item.active { color: var(--blue); }
     </style>
 </head>
 <body>
 
 <div class="app">
-    <div id="view-arena" class="view active">
+    <div id="arena-view" style="display: flex; flex-direction: column; height: 100%;">
         <div class="header">
             <div style="font-size:20px">📦</div>
-            <div class="balance-group">
-                <div class="balance">💎 <span id="bal-val">1000.0</span></div>
-                <button class="bonus-btn" onclick="claimBonus()">+</button>
-            </div>
+            <div class="balance" onclick="addMoney()">💎 <span id="bal-val">1000.0</span></div>
         </div>
-        
-        <div style="text-align: center">
+
+        <div style="text-align: center; margin-bottom: 10px;">
             <div style="font-size:10px; color:var(--blue)">JACKPOT</div>
             <div style="font-size:24px; font-weight:900"><span id="bank-val">0.00</span> TON</div>
         </div>
@@ -66,6 +55,10 @@
         <div class="status-line" id="status-text">ОЖИДАНИЕ ИГРОКОВ...</div>
 
         <div class="game-viewport">
+            <div id="loader" class="loader-wrap">
+                <div class="spinner"></div>
+                <p style="font-size: 10px; margin-top: 10px; color: var(--blue)">ОЖИДАНИЕ ИГРОКОВ</p>
+            </div>
             <canvas id="gameCanvas" width="320" height="320"></canvas>
             <div id="win-overlay" class="overlay">
                 <img src="" id="win-img" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--green)">
@@ -84,24 +77,12 @@
             <button class="bet-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
         </div>
 
-        <div style="padding: 0 20px; font-size: 12px; color: var(--blue); font-weight: bold;">ИГРОКИ:</div>
         <div class="players-list" id="p-list"></div>
-        
-        <div style="padding: 15px 20px 5px; font-size: 12px; color: var(--blue); font-weight: bold;">ИСТОРИЯ ИГР:</div>
-        <div class="history-list" id="h-list"></div>
-    </div>
-
-    <!-- ЭКРАН ПРОФИЛЯ -->
-    <div id="view-profile" class="view profile">
-        <img src="" id="my-ava" class="prof-ava">
-        <input type="text" id="name-input" placeholder="Ник" style="width:100%; margin-bottom:10px; padding:10px; background:#111; border:1px solid #333; color:white; border-radius:10px;">
-        <input type="text" id="ava-input" placeholder="URL Аватарки" style="width:100%; margin-bottom:20px; padding:10px; background:#111; border:1px solid #333; color:white; border-radius:10px;">
-        <button class="bet-btn" onclick="saveProfile()" style="background:var(--blue)">СОХРАНИТЬ</button>
     </div>
 
     <div class="nav">
-        <div class="nav-btn active" id="tab-arena" onclick="showView('arena')">АРЕНА</div>
-        <div class="nav-btn" id="tab-profile" onclick="showView('profile')">ПРОФИЛЬ</div>
+        <div class="nav-item active">АРЕНА</div>
+        <div class="nav-item">ПРОФИЛЬ</div>
     </div>
 </div>
 
@@ -116,47 +97,43 @@
         avatar: 'https://i.pravatar.cc/100?u=' + Math.random()
     };
     let balance = parseFloat(localStorage.getItem('balls_balance')) || 1000.0;
-    let lastBonus = localStorage.getItem('last_bonus') || 0;
-
-    let gameState = { players: [], bank: 0, status: 'BETTING', timeLeft: 15, history: [] };
+    let game = { players: [], bank: 0, status: 'WAITING', timeLeft: 15 };
     let ball = { x: 160, y: 160, vx: 0, vy: 0 };
     let selAmt = 0;
-    let images = {};
+    let playerImages = {}; // Кеш для картинок
 
-    function save() {
-        localStorage.setItem('balls_user', JSON.stringify(user));
-        localStorage.setItem('balls_balance', balance);
-        localStorage.setItem('last_bonus', lastBonus);
+    function addMoney() { balance += 100; updateUI(); }
+
+    function selectChip(amt) {
+        selAmt = amt;
+        document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText) === amt));
     }
 
-    function claimBonus() {
-        const now = Date.now();
-        const diff = now - lastBonus;
-        if (diff > 3600000) { // 1 час = 3,600,000 мс
-            balance += 500;
-            lastBonus = now;
-            save();
-            updateUI();
-            alert("Вы получили бонус +500 монет!");
-        } else {
-            const remain = Math.ceil((3600000 - diff) / 60000);
-            alert(`Бонус будет доступен через ${remain} мин.`);
-        }
+    function confirmBet() {
+        if(selAmt <= 0 || balance < selAmt || game.status === 'FLYING') return;
+        balance -= selAmt;
+        socket.emit('bet', { uid: user.uid, name: user.name, avatar: user.avatar, bet: selAmt });
+        selAmt = 0;
+        localStorage.setItem('balls_balance', balance);
+        updateUI();
     }
 
     socket.on('sync', (data) => {
-        gameState = data;
+        game = data;
         updateUI();
-        gameState.players.forEach(p => {
-            if(!images[p.uid]) { images[p.uid] = new Image(); images[p.uid].src = p.avatar; }
+        // Предзагрузка аватарок
+        game.players.forEach(p => {
+            if(!playerImages[p.uid]) {
+                const img = new Image();
+                img.src = p.avatar;
+                playerImages[p.uid] = img;
+            }
         });
     });
 
     socket.on('start_game', (data) => {
-        gameState.status = 'FLYING';
-        ball.x = 160; ball.y = 160;
-        ball.vx = Math.cos(data.angle) * 22;
-        ball.vy = Math.sin(data.angle) * 22;
+        game.status = 'FLYING';
+        ball = { x: 160, y: 160, vx: Math.cos(data.angle) * 18, vy: Math.sin(data.angle) * 18 };
     });
 
     socket.on('reset_game', () => {
@@ -164,39 +141,25 @@
         ball = { x: 160, y: 160, vx: 0, vy: 0 };
     });
 
-    function confirmBet() {
-        if(selAmt <= 0 || balance < selAmt || gameState.status !== 'BETTING') return;
-        balance -= selAmt;
-        socket.emit('bet', { uid: user.uid, name: user.name, avatar: user.avatar, bet: selAmt });
-        selAmt = 0; save(); updateUI();
-    }
-
     function updateUI() {
         document.getElementById('bal-val').innerText = balance.toFixed(1);
-        document.getElementById('bank-val').innerText = gameState.bank.toFixed(2);
+        document.getElementById('bank-val').innerText = game.bank.toFixed(2);
         
-        const status = document.getElementById('status-text');
-        if (gameState.players.length < 2) status.innerText = 'ОЖИДАНИЕ ИГРОКОВ (МИН. 2)...';
-        else if (gameState.status === 'BETTING') status.innerText = `НАЧАЛО ЧЕРЕЗ: ${gameState.timeLeft}С`;
-        else status.innerText = 'ИГРА ИДЕТ!';
+        const loader = document.getElementById('loader');
+        const statusText = document.getElementById('status-text');
 
-        // Список игроков с процентами
-        document.getElementById('p-list').innerHTML = gameState.players.sort((a,b) => b.bet - a.bet).map(p => {
-            const chance = ((p.bet / gameState.bank) * 100).toFixed(1);
-            return `
+        if (game.players.length < 2) {
+            loader.style.display = 'flex';
+            statusText.innerText = 'ОЖИДАНИЕ ИГРОКОВ...';
+        } else {
+            loader.style.display = 'none';
+            statusText.innerText = game.status === 'BETTING' ? `ДО НАЧАЛА: ${game.timeLeft}С` : 'ИГРА ИДЕТ!';
+        }
+
+        document.getElementById('p-list').innerHTML = game.players.map(p => `
             <div class="p-item">
-                <span><b style="color:${p.color}">●</b> ${p.name} <span class="p-chance">${chance}%</span></span>
+                <span><b style="color:${p.color}">●</b> ${p.name}</span>
                 <b>${p.bet} TON</b>
-            </div>`;
-        }).join('');
-
-        // История игр
-        document.getElementById('h-list').innerHTML = gameState.history.map(h => `
-            <div class="h-item">
-                <img src="${h.avatar}" class="h-ava">
-                <div style="flex:1"><b>${h.name}</b></div>
-                <div style="color:var(--green)">+${h.prize}</div>
-                <div style="opacity:0.5">x${h.x}</div>
             </div>
         `).join('');
     }
@@ -204,98 +167,93 @@
     function draw() {
         ctx.clearRect(0, 0, 320, 320);
         
-        if (gameState.bank > 0) {
+        if (game.players.length >= 2) {
             let currentA = 0;
-            gameState.players.forEach(p => {
-                const slice = (p.bet / gameState.bank) * (Math.PI * 2);
+            game.players.forEach(p => {
+                const slice = (p.bet / game.bank) * (Math.PI * 2);
+                
+                // Рисуем сектор
                 ctx.beginPath();
                 ctx.moveTo(160, 160);
                 ctx.arc(160, 160, 500, currentA, currentA + slice);
                 ctx.fillStyle = p.color;
                 ctx.globalAlpha = 0.8;
                 ctx.fill();
+                ctx.globalAlpha = 1.0;
+
+                // Рисуем аватарку в центре сектора
+                const midAngle = currentA + slice / 2;
+                const imgX = 160 + Math.cos(midAngle) * 80;
+                const imgY = 160 + Math.sin(midAngle) * 80;
+
+                if (playerImages[p.uid] && playerImages[p.uid].complete) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(imgX, imgY, 15, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(playerImages[p.uid], imgX - 15, imgY - 15, 30, 30);
+                    ctx.restore();
+                }
+
                 currentA += slice;
             });
-            ctx.globalAlpha = 1;
         }
 
-        if (gameState.status === 'FLYING') {
+        if (game.status === 'FLYING') {
             ball.x += ball.vx; ball.y += ball.vy;
-            
-            // КВАДРАТНЫЕ ГРАНИЦЫ (320x320)
-            if (ball.x < 8 || ball.x > 312) ball.vx *= -1;
-            if (ball.y < 8 || ball.y > 312) ball.vy *= -1;
-            
-            // Трение
-            ball.vx *= 0.996; ball.vy *= 0.996;
+            if (ball.x < 10 || ball.x > 310) ball.vx *= -1;
+            if (ball.y < 10 || ball.y > 310) ball.vy *= -1;
+            ball.vx *= 0.995; ball.vy *= 0.995;
             
             ctx.beginPath(); ctx.arc(ball.x, ball.y, 8, 0, Math.PI*2);
             ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white';
             ctx.fill(); ctx.shadowBlur = 0;
 
-            if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) showWinner();
-        } else {
+            if (Math.abs(ball.vx) < 0.1) showWinner();
+        } else if (game.players.length >= 2) {
             ctx.beginPath(); ctx.arc(160, 160, 8, 0, Math.PI*2);
             ctx.fillStyle = 'white'; ctx.fill();
         }
+        
         requestAnimationFrame(draw);
     }
 
+    let winProcessed = false;
     function showWinner() {
-        if (gameState.status !== 'FLYING') return;
-        gameState.status = 'END';
+        if (game.status !== 'FLYING' || winProcessed) return;
+        winProcessed = true;
+
         let angle = Math.atan2(ball.y - 160, ball.x - 160);
         if (angle < 0) angle += Math.PI * 2;
 
         let currentA = 0;
-        let winner = gameState.players[0];
-        for(let p of gameState.players) {
-            let slice = (p.bet / gameState.bank) * (Math.PI * 2);
-            if(angle >= currentA && angle <= currentA + slice) { winner = p; break; }
+        let winner = game.players[0];
+        for(let p of game.players) {
+            let slice = (p.bet / game.bank) * (Math.PI * 2);
+            if(angle >= currentA && angle <= currentA + slice) {
+                winner = p;
+                break;
+            }
             currentA += slice;
         }
 
-        if (winner.uid === user.uid) { balance += gameState.bank; save(); }
-
-        // Отправляем в историю только если мы "хост" (кто первый увидел финиш)
-        // Чтобы не было дублей, обычно сервер считает победителя, но здесь сделаем так:
-        if (winner) {
-            socket.emit('add_history', {
-                name: winner.name, avatar: winner.avatar, 
-                prize: gameState.bank.toFixed(2), 
-                x: (gameState.bank / winner.bet).toFixed(1)
-            });
+        if (winner.uid === user.uid) {
+            balance += game.bank;
+            localStorage.setItem('balls_balance', balance);
         }
 
         document.getElementById('win-overlay').style.display = 'flex';
         document.getElementById('win-img').src = winner.avatar;
         document.getElementById('win-name').innerText = winner.name;
-        document.getElementById('win-sum').innerText = `+${gameState.bank.toFixed(2)} TON`;
-        
-        setTimeout(() => { document.getElementById('win-overlay').style.display = 'none'; }, 5000);
+        document.getElementById('win-sum').innerText = `+${game.bank.toFixed(2)} TON`;
+
+        setTimeout(() => {
+            winProcessed = false;
+            document.getElementById('win-overlay').style.display = 'none';
+        }, 5000);
     }
 
-    function showView(view) {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('view-' + view).classList.add('active');
-        document.getElementById('tab-' + view).classList.add('active');
-        if(view === 'profile') {
-            document.getElementById('my-ava').src = user.avatar;
-            document.getElementById('name-input').value = user.name;
-            document.getElementById('ava-input').value = user.avatar;
-        }
-    }
-
-    function saveProfile() {
-        user.name = document.getElementById('name-input').value;
-        user.avatar = document.getElementById('ava-input').value;
-        save(); alert('Сохранено!'); showView('arena');
-    }
-
-    function selectChip(amt) { selAmt = amt; document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText) === amt)); }
-
-    save(); showView('arena'); draw();
+    draw();
 </script>
 </body>
 </html>
