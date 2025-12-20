@@ -4,19 +4,21 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// Указываем серверу раздавать файлы из текущей папки
 app.use(express.static(__dirname));
 
-// Главная страница
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// Цвета для игроков
+const COLORS = ['#ff4444', '#44ff44', '#4444ff', '#ffcc00', '#ff00ff', '#00ffff', '#ffa500', '#8b4513'];
 
 let gameState = {
     players: [],
     bank: 0,
     timeLeft: 15,
-    status: 'BETTING'
+    status: 'BETTING', // BETTING, FLYING, END
+    winningAngle: 0
 };
 
 // Игровой цикл
@@ -26,13 +28,14 @@ setInterval(() => {
         if (gameState.timeLeft <= 0) {
             if (gameState.players.length > 0) {
                 gameState.status = 'FLYING';
-                const winAngle = Math.random() * Math.PI * 2;
-                io.emit('start_game', { angle: winAngle });
+                gameState.winningAngle = Math.random() * Math.PI * 2;
+                io.emit('start_game', { angle: gameState.winningAngle });
                 
+                // Через 18 секунд сброс (время полета + пауза)
                 setTimeout(() => {
-                    gameState = { players: [], bank: 0, timeLeft: 15, status: 'BETTING' };
-                    io.emit('reset');
-                }, 20000);
+                    gameState = { players: [], bank: 0, timeLeft: 15, status: 'BETTING', winningAngle: 0 };
+                    io.emit('reset_game');
+                }, 18000);
             } else {
                 gameState.timeLeft = 15;
             }
@@ -41,18 +44,26 @@ setInterval(() => {
     io.emit('sync', gameState);
 }, 1000);
 
-// Подключения игроков
 io.on('connection', (socket) => {
     socket.on('bet', (data) => {
         if (gameState.status === 'BETTING') {
-            gameState.players.push({ ...data, id: socket.id });
+            // Если игрок уже ставил, добавляем к его ставке
+            let p = gameState.players.find(player => player.uid === data.uid);
+            if (p) {
+                p.bet += data.bet;
+            } else {
+                gameState.players.push({
+                    uid: data.uid,
+                    name: data.name,
+                    avatar: data.avatar,
+                    bet: data.bet,
+                    color: COLORS[gameState.players.length % COLORS.length]
+                });
+            }
             gameState.bank += data.bet;
         }
     });
 });
 
-// ПОРТ ДЛЯ ХОСТИНГА (Render сам подставит нужный)
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-});
+http.listen(PORT, () => console.log(`Server on port ${PORT}`));
