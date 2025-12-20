@@ -7,70 +7,22 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root {
-            --bg: #0a0a12;
-            --blue: #00d2ff;
-            --green: #00ff88;
-            --tg-bg: var(--tg-theme-bg-color, #0a0a12);
-        }
-        
-        body { 
-            margin: 0; background: var(--bg); color: white; 
-            font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; 
-        }
-
+        :root { --bg: #0a0a12; --blue: #00d2ff; --green: #00ff88; }
+        body { margin: 0; background: var(--bg); color: white; font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh; }
         .app { display: flex; flex-direction: column; height: 100vh; position: relative; }
-
-        .header { 
-            padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
-            padding-top: calc(10px + env(safe-area-inset-top));
-        }
-
-        .balance { 
-            background: rgba(0, 210, 255, 0.1); padding: 8px 15px; 
-            border-radius: 20px; border: 1px solid var(--blue); font-weight: 800;
-        }
-
-        .game-area {
-            flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .game-viewport { 
-            width: 320px; height: 320px; position: relative; 
-            border: 4px solid #1a1a2e; background: #000; border-radius: 20px; overflow: hidden;
-        }
-        
+        .header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; padding-top: calc(10px + env(safe-area-inset-top)); }
+        .balance { background: rgba(0, 210, 255, 0.1); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--blue); font-weight: 800; }
+        .game-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .game-viewport { width: 320px; height: 320px; position: relative; border: 4px solid #1a1a2e; background: #000; border-radius: 20px; overflow: hidden; }
         canvas { display: block; }
-
         .status-line { margin: 10px 0; font-weight: bold; color: var(--blue); text-transform: uppercase; font-size: 14px; }
-
-        .bet-panel { 
-            padding: 20px; background: #11111e; border-radius: 25px 25px 0 0; 
-            position: relative; z-index: 10; /* Чтобы кнопки всегда были сверху */
-        }
-
+        .bet-panel { padding: 20px; background: #11111e; border-radius: 25px 25px 0 0; position: relative; z-index: 10; }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-        
-        .chip { 
-            background: #1c1c2d; border: 2px solid transparent; padding: 12px 0; 
-            border-radius: 12px; color: white; font-weight: bold; font-size: 16px;
-            cursor: pointer; -webkit-tap-highlight-color: transparent;
-        }
+        .chip { background: #1c1c2d; border: 2px solid transparent; padding: 12px 0; border-radius: 12px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
         .chip.active { border-color: var(--blue); background: rgba(0, 210, 255, 0.2); }
-
-        .bet-btn { 
-            width: 100%; padding: 18px; border-radius: 15px; 
-            background: var(--green); border: none; font-weight: 900; 
-            font-size: 18px; color: #000; cursor: pointer;
-        }
+        .bet-btn { width: 100%; padding: 18px; border-radius: 15px; background: var(--green); border: none; font-weight: 900; font-size: 18px; color: #000; cursor: pointer; }
         .bet-btn:disabled { opacity: 0.4; pointer-events: none; }
-
-        .overlay { 
-            position: absolute; inset: 0; background: rgba(0,0,0,0.9); 
-            display: none; flex-direction: column; justify-content: center; 
-            align-items: center; z-index: 100;
-        }
-
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         #win-img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 3px solid var(--green); }
     </style>
 </head>
@@ -79,24 +31,21 @@
 <div class="app">
     <div class="header">
         <div id="user-info" style="display: flex; align-items: center; gap: 8px;">
-            <img id="my-avatar" src="" style="width: 32px; height: 32px; border-radius: 50%; display:none; border: 1px solid var(--blue);">
-            <span id="my-name" style="font-weight: 600;">Player</span>
+            <img id="my-avatar" src="" style="width: 32px; height: 32px; border-radius: 50%; display:none;">
+            <span id="my-name">Player</span>
         </div>
         <div class="balance">💎 <span id="bal-val">0</span></div>
     </div>
 
     <div class="game-area">
-        <div style="font-size:12px; opacity:0.6">БАНК</div>
-        <div style="font-size:32px; font-weight:900; margin-bottom: 10px;"><span id="bank-val">0</span> <span style="font-size:16px">TON</span></div>
-        
+        <div style="font-size:32px; font-weight:900;"><span id="bank-val">0</span> <span style="font-size:16px">TON</span></div>
         <div id="status-text" class="status-line">ОЖИДАНИЕ...</div>
-
         <div class="game-viewport">
             <canvas id="gameCanvas" width="320" height="320"></canvas>
             <div id="win-overlay" class="overlay">
                 <img src="" id="win-img">
-                <h2 id="win-name" style="margin:5px 0"></h2>
-                <h1 id="win-sum" style="color:var(--blue); margin:0">+0 TON</h1>
+                <h2 id="win-name"></h2>
+                <h1 id="win-sum" style="color:var(--blue);">+0 TON</h1>
             </div>
         </div>
     </div>
@@ -115,190 +64,99 @@
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    
     const socket = io();
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Данные пользователя
-    const webUser = tg.initDataUnsafe?.user || { id: 0, first_name: "LocalUser" };
-    let user = {
-        uid: 'tg_' + webUser.id,
-        name: webUser.first_name,
-        avatar: webUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${webUser.id}`
-    };
+    const webUser = tg.initDataUnsafe?.user || { id: 0, first_name: "User" };
+    let user = { uid: 'tg_' + webUser.id, name: webUser.first_name, avatar: webUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${webUser.id}` };
 
     document.getElementById('my-name').innerText = user.name;
-    if(webUser.photo_url) {
-        const av = document.getElementById('my-avatar');
-        av.src = user.avatar;
-        av.style.display = 'block';
-    }
+    if(webUser.photo_url) { document.getElementById('my-avatar').src = user.avatar; document.getElementById('my-avatar').style.display = 'block'; }
 
     let balance = parseFloat(localStorage.getItem('bal_v5')) || 1000.0;
-    let game = { players: [], status: 'WAITING', bank: 0 };
-    let ball = { x: 160, y: 160, vx: 0, vy: 0, active: false };
-    let arrowAngle = 0;
-    let isAiming = false;
-    let selAmt = 0;
+    let srv = { players: [], status: 'WAITING', bank: 0, ball: {x: 160, y: 160}, winner: null };
     let playerImages = {};
+    let selAmt = 0;
+
+    socket.on('sync', (data) => {
+        const oldStatus = srv.status;
+        srv = data;
+        
+        // Начисление выигрыша
+        if (oldStatus !== 'WINNER' && srv.status === 'WINNER' && srv.winner?.uid === user.uid) {
+            balance += srv.bank;
+            localStorage.setItem('bal_v5', balance);
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+        
+        updateUI();
+        srv.players.forEach(p => {
+            if(!playerImages[p.uid]) { const img = new Image(); img.src = p.avatar; playerImages[p.uid] = img; }
+        });
+    });
 
     function updateUI() {
         document.getElementById('bal-val').innerText = balance.toFixed(0);
-        document.getElementById('bank-val').innerText = game.bank.toFixed(1);
-        
+        document.getElementById('bank-val').innerText = srv.bank.toFixed(1);
         const btn = document.getElementById('main-bet-btn');
-        if (game.status === 'BETTING') {
-            document.getElementById('status-text').innerText = `СТАРТ ЧЕРЕЗ: ${game.timeLeft}С`;
+        const overlay = document.getElementById('win-overlay');
+
+        if (srv.status === 'BETTING') {
+            document.getElementById('status-text').innerText = `СТАРТ ЧЕРЕЗ: ${srv.timeLeft}С`;
             btn.disabled = false;
-        } else if (game.status === 'FLYING') {
+            overlay.style.display = 'none';
+        } else if (srv.status === 'FLYING') {
             document.getElementById('status-text').innerText = `ИГРА...`;
             btn.disabled = true;
-        } else {
-            document.getElementById('status-text').innerText = `ОЖИДАНИЕ ИГРОКОВ...`;
-            btn.disabled = false;
+            overlay.style.display = 'none';
+        } else if (srv.status === 'WINNER') {
+            document.getElementById('status-text').innerText = `ПОБЕДИТЕЛЬ ОПРЕДЕЛЕН`;
+            btn.disabled = true;
+            if (srv.winner) {
+                overlay.style.display = 'flex';
+                document.getElementById('win-img').src = srv.winner.avatar;
+                document.getElementById('win-name').innerText = srv.winner.name;
+                document.getElementById('win-sum').innerText = `+${srv.bank.toFixed(1)} TON`;
+            }
         }
     }
 
-    function setBet(amt) {
-        selAmt = amt;
-        document.querySelectorAll('.chip').forEach(c => {
-            c.classList.toggle('active', parseInt(c.innerText) === amt);
-        });
-        if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-    }
-
+    function setBet(amt) { selAmt = amt; document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText) === amt)); }
     function confirmBet() {
-        if (selAmt <= 0) return tg.showAlert("Выберите сумму ставки!");
-        if (balance < selAmt) return tg.showAlert("Недостаточно TON!");
-
+        if (balance < selAmt || selAmt <= 0) return;
         balance -= selAmt;
         socket.emit('bet', { ...user, bet: selAmt });
         localStorage.setItem('bal_v5', balance);
         updateUI();
-        if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     }
-
-    socket.on('sync', (data) => {
-        game = data;
-        updateUI();
-        // Предзагрузка аватарок
-        game.players.forEach(p => {
-            if(!playerImages[p.uid]) {
-                const img = new Image();
-                img.src = p.avatar;
-                playerImages[p.uid] = img;
-            }
-        });
-    });
-
-    socket.on('start_aiming', (data) => {
-        ball = { x: data.pos.x, y: data.pos.y, vx: 0, vy: 0, active: true };
-        isAiming = true;
-        document.getElementById('win-overlay').style.display = 'none';
-    });
-
-    socket.on('launch_ball', () => { isAiming = false; ball.vx = Math.cos(arrowAngle) * 14; ball.vy = Math.sin(arrowAngle) * 14; });
-
-    socket.on('reset_game', () => { ball.active = false; document.getElementById('win-overlay').style.display = 'none'; });
 
     function draw() {
         ctx.clearRect(0, 0, 320, 320);
         
-        // 1. Рисуем территории
-        if (game.players.length > 0) {
-            let x = 0, y = 0, w = 320, h = 320;
-            let horizontal = true;
-            let remainingBank = game.bank;
-            const sorted = [...game.players].sort((a,b) => b.bet - a.bet);
+        // Отрисовка территорий из данных сервера
+        srv.players.forEach(p => {
+            if(!p.rect) return;
+            ctx.fillStyle = p.color; ctx.globalAlpha = 0.4;
+            ctx.fillRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
+            ctx.strokeStyle = p.color; ctx.globalAlpha = 1; ctx.strokeRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
 
-            sorted.forEach((p) => {
-                const ratio = p.bet / remainingBank;
-                let tw, th;
-                if (horizontal) { tw = w; th = h * ratio; p.rect = { x, y, w: tw, h: th }; y += th; h -= th; }
-                else { tw = w * ratio; th = h; p.rect = { x, y, w: tw, h: th }; x += tw; w -= tw; }
-                remainingBank -= p.bet;
-                horizontal = !horizontal;
-
-                // Фон сектора
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = 0.4;
-                ctx.fillRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
-                
-                // Рамка
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 2;
-                ctx.globalAlpha = 0.8;
-                ctx.strokeRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
-
-                // АВАТАРКА в центре сектора
-                if (playerImages[p.uid]) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.5; // Сделаем чуть прозрачной, чтобы не мешала шару
-                    const size = Math.min(p.rect.w, p.rect.h) * 0.7; // 70% от размера сектора
-                    const imgX = p.rect.x + (p.rect.w - size) / 2;
-                    const imgY = p.rect.y + (p.rect.h - size) / 2;
-                    
-                    // Круглая маска для аватарки
-                    ctx.beginPath();
-                    ctx.arc(imgX + size/2, imgY + size/2, size/2, 0, Math.PI*2);
-                    ctx.clip();
-                    ctx.drawImage(playerImages[p.uid], imgX, imgY, size, size);
-                    ctx.restore();
-                }
-            });
-            ctx.globalAlpha = 1;
-        }
-
-        // 2. Рисуем шар
-        if (ball.active) {
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = "#fff";
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#00d2ff";
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            if (isAiming) {
-                arrowAngle += 0.08;
-                ctx.strokeStyle = "white";
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(ball.x, ball.y);
-                ctx.lineTo(ball.x + Math.cos(arrowAngle) * 40, ball.y + Math.sin(arrowAngle) * 40);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            } else {
-                ball.x += ball.vx; ball.y += ball.vy;
-                if (ball.x < 10 || ball.x > 310) ball.vx *= -1;
-                if (ball.y < 10 || ball.y > 310) ball.vy *= -1;
-                ball.vx *= 0.993; ball.vy *= 0.993;
-
-                if (Math.abs(ball.vx) < 0.1 && !document.getElementById('win-overlay').style.display.includes('flex')) {
-                    checkWinner();
-                }
+            if (playerImages[p.uid]) {
+                ctx.save(); ctx.globalAlpha = 0.3;
+                const size = Math.min(p.rect.w, p.rect.h) * 0.6;
+                ctx.beginPath(); ctx.arc(p.rect.x + p.rect.w/2, p.rect.y + p.rect.h/2, size/2, 0, Math.PI*2); ctx.clip();
+                ctx.drawImage(playerImages[p.uid], p.rect.x + (p.rect.w-size)/2, p.rect.y + (p.rect.h-size)/2, size, size);
+                ctx.restore();
             }
+        });
+
+        // Шар (координаты только от сервера)
+        if (srv.status === 'FLYING' || srv.status === 'WINNER') {
+            ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(srv.ball.x, srv.ball.y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff"; ctx.shadowBlur = 15; ctx.shadowColor = "#00d2ff"; ctx.fill(); ctx.shadowBlur = 0;
         }
         requestAnimationFrame(draw);
     }
-
-    function checkWinner() {
-        let winner = game.players.find(p => 
-            ball.x >= p.rect.x && ball.x <= p.rect.x + p.rect.w &&
-            ball.y >= p.rect.y && ball.y <= p.rect.y + p.rect.h
-        );
-        if (winner) {
-            if (winner.uid === user.uid) { balance += game.bank; localStorage.setItem('bal_v5', balance); }
-            document.getElementById('win-overlay').style.display = 'flex';
-            document.getElementById('win-img').src = winner.avatar;
-            document.getElementById('win-name').innerText = winner.name;
-            document.getElementById('win-sum').innerText = `+${game.bank.toFixed(1)} TON`;
-            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-    }
-
-    updateUI();
     draw();
 </script>
 </body>
