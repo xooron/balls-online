@@ -2,157 +2,237 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Balls Pro PvP v2 - Modern</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Balls PvP Bot</title>
+    <!-- Подключаем SDK Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --bg: #05050a; --blue: #00d2ff; --green: #00ff88; --gold: #ffcc00; }
-        body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; overflow: hidden; }
-        .app { width: 100%; max-width: 400px; height: 100vh; background: var(--bg); display: flex; flex-direction: column; position: relative; }
+        :root {
+            --bg: #05050a;
+            --blue: #00d2ff;
+            --green: #00ff88;
+            --tg-bg: var(--tg-theme-bg-color, #05050a);
+            --tg-text: var(--tg-theme-text-color, #ffffff);
+        }
         
-        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .balance { background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--blue); font-weight: 900; cursor: pointer; font-size: 14px; }
+        body { 
+            margin: 0; 
+            background: var(--bg); 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
 
-        .view { display: none; flex-direction: column; height: 100%; overflow: hidden; padding-bottom: 70px; }
-        .view.active { display: flex; }
+        .app { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh;
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+        }
 
-        .game-viewport { width: 320px; height: 320px; margin: 0 auto; position: relative; border: 4px solid #1a1a2e; background: #000; overflow: hidden; flex-shrink: 0; }
-        
-        .status-line { text-align: center; margin: 8px 0; font-size: 12px; color: var(--blue); font-weight: bold; text-transform: uppercase; }
-
-        .bet-panel { padding: 10px 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
-        .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-        .chip { background: #111122; border: 2px solid transparent; padding: 10px 0; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; text-align: center; font-size: 12px; }
-        .chip.active { border-color: var(--blue); background: rgba(0, 210, 255, 0.1); }
-        
-        .bet-btn { width: 100%; padding: 15px; border-radius: 12px; background: var(--green); border: none; font-weight: 900; font-size: 16px; cursor: pointer; color: #000; }
-
-        .players-list { flex-grow: 1; overflow-y: auto; padding: 0 20px; }
-        .p-item { 
+        /* Адаптация под вырез сверху в Telegram */
+        .header { 
+            padding: 10px 15px; 
             display: flex; 
             justify-content: space-between; 
-            padding: 10px 12px; 
-            background: rgba(255,255,255,0.03); 
-            margin-bottom: 5px; 
-            border-radius: 8px;
-            font-size: 13px;
+            align-items: center;
+            margin-top: env(safe-area-inset-top);
         }
-        .p-info { display: flex; flex-direction: column; }
-        .p-bet { font-size: 14px; font-weight: 900; }
-        .p-chance { font-size: 10px; opacity: 0.7; color: #fff; }
 
-        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; text-align: center; }
-        .prof-input { width: 100%; background: #111; border: 1px solid #333; padding: 12px; color: white; border-radius: 10px; margin-bottom: 10px; }
-        .admin-box { margin-top: 20px; padding: 15px; border: 2px dashed red; border-radius: 10px; display: none; }
+        .balance { 
+            background: rgba(0, 210, 255, 0.15); 
+            padding: 6px 12px; 
+            border-radius: 100px; 
+            border: 1px solid var(--blue); 
+            font-weight: 800;
+            font-size: 14px;
+        }
 
-        .nav { position: absolute; bottom: 0; left: 0; right: 0; height: 65px; background: #0a0a15; display: flex; border-top: 1px solid #1a1a2e; z-index: 1000; }
-        .nav-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #555; cursor: pointer; font-weight: bold; }
-        .nav-item.active { color: var(--blue); }
+        .game-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .game-viewport { 
+            width: 90vw; 
+            height: 90vw; 
+            max-width: 340px; 
+            max-height: 340px;
+            position: relative; 
+            border: 3px solid #1a1a2e; 
+            background: #000; 
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,210,255,0.2);
+        }
+        
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .status-line { margin: 10px 0; font-size: 13px; color: var(--blue); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        .bet-panel { 
+            padding: 15px; 
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px 20px 0 0;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        }
+
+        .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+        .chip { 
+            background: #161625; 
+            border: 2px solid transparent; 
+            padding: 12px 0; 
+            border-radius: 12px; 
+            color: white; 
+            font-weight: bold; 
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .chip.active { border-color: var(--blue); background: rgba(0, 210, 255, 0.2); transform: scale(0.95); }
+
+        .bet-btn { 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 15px; 
+            background: var(--green); 
+            border: none; 
+            font-weight: 900; 
+            font-size: 16px; 
+            color: #000;
+            text-transform: uppercase;
+        }
+
+        .players-list { height: 120px; overflow-y: auto; width: 100%; padding: 0 15px; margin-bottom: 10px; }
+        .p-item { 
+            display: flex; justify-content: space-between; 
+            padding: 8px 12px; background: rgba(255,255,255,0.05); 
+            margin-bottom: 6px; border-radius: 10px; font-size: 13px;
+        }
+
+        .overlay { 
+            position: absolute; inset: 0; background: rgba(0,0,0,0.9); 
+            display: none; flex-direction: column; justify-content: center; 
+            align-items: center; z-index: 100; border-radius: 12px;
+        }
+
+        /* Навигация как в ТГ */
+        .nav { display: flex; border-top: 1px solid #1a1a2e; background: #0a0a15; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; padding: 12px; text-align: center; font-size: 11px; opacity: 0.5; }
+        .nav-item.active { opacity: 1; color: var(--blue); border-top: 2px solid var(--blue); }
     </style>
 </head>
 <body>
 
 <div class="app">
-    <div id="view-arena" class="view active">
+    <div id="view-arena" class="view active" style="display: flex; flex-direction: column; height: 100%;">
         <div class="header">
-            <div style="font-size: 10px; opacity: 0.6;">ID: <span id="my-id-val">?</span></div>
-            <div class="balance" onclick="claimBonus()">💎 <span id="bal-val">100.0</span></div>
-        </div>
-
-        <div style="text-align: center; margin-bottom: 5px;">
-            <div style="font-size:10px; color:var(--blue)">ОБЩИЙ БАНК</div>
-            <div style="font-size:24px; font-weight:900"><span id="bank-val">0.00</span> TON</div>
-        </div>
-
-        <div class="status-line" id="status-text">ОЖИДАНИЕ...</div>
-
-        <div class="game-viewport">
-            <canvas id="gameCanvas" width="320" height="320"></canvas>
-            <div id="win-overlay" class="overlay">
-                <img src="" id="win-img" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--green)">
-                <h2 id="win-name" style="margin:5px 0">NAME</h2>
-                <h1 id="win-sum" style="color:var(--blue); margin:0">+0.00 TON</h1>
+            <div id="user-info" style="display: flex; align-items: center; gap: 8px;">
+                <img id="my-avatar" src="" style="width: 30px; height: 30px; border-radius: 50%; display: none;">
+                <span id="my-name" style="font-size: 14px; font-weight: 600;">Загрузка...</span>
             </div>
+            <div class="balance">💎 <span id="bal-val">100</span></div>
         </div>
 
-        <div class="bet-panel">
-            <div class="chips">
-                <button class="chip" onclick="setBet(10)">10</button>
-                <button class="chip" onclick="setBet(50)">50</button>
-                <button class="chip" onclick="setBet(100)">100</button>
-                <button class="chip" onclick="setBet(500)">500</button>
+        <div style="text-align: center; margin: 10px 0;">
+            <div style="font-size:10px; color:var(--blue); opacity: 0.8;">ОБЩИЙ БАНК</div>
+            <div style="font-size:28px; font-weight:900"><span id="bank-val">0.00</span> <span style="font-size: 16px;">TON</span></div>
+        </div>
+
+        <div class="game-container">
+            <div class="status-line" id="status-text">ОЖИДАНИЕ ИГРОКОВ</div>
+            <div class="game-viewport">
+                <canvas id="gameCanvas" width="340" height="340"></canvas>
+                <div id="win-overlay" class="overlay">
+                    <img src="" id="win-img" style="width:70px; height:70px; border-radius:50%; border:3px solid var(--green)">
+                    <h2 id="win-name" style="margin:10px 0">NAME</h2>
+                    <h1 id="win-sum" style="color:var(--blue); margin:0">+0.00 TON</h1>
+                </div>
             </div>
-            <button class="bet-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
         </div>
 
         <div class="players-list" id="p-list"></div>
-    </div>
 
-    <div id="view-profile" class="view">
-        <div style="padding: 30px; text-align: center;">
-            <img src="" id="prof-preview" style="width:100px; height:100px; border-radius:50%; border:2px solid var(--blue)">
-            <p>Ваш ID: <span id="prof-id-val"></span></p>
-            <input type="text" id="inp-name" class="prof-input" placeholder="Никнейм">
-            <button class="bet-btn" onclick="saveProfile()" style="background:var(--blue)">СОХРАНИТЬ</button>
-
-            <div id="admin-box" class="admin-box">
-                <h4 style="color:red">АДМИН-ПАНЕЛЬ</h4>
-                <button onclick="socket.emit('admin_action', 'bot')" style="width:100%; padding:10px; margin-bottom:5px;">ДОБАВИТЬ БОТА</button>
-                <button onclick="balance+=1000; updateUI();" style="width:100%; padding:10px;">+1000 TON</button>
+        <div class="bet-panel">
+            <div class="chips">
+                <button class="chip" onclick="setBet(5)">5</button>
+                <button class="chip" onclick="setBet(10)">10</button>
+                <button class="chip" onclick="setBet(25)">25</button>
+                <button class="chip" onclick="setBet(50)">50</button>
             </div>
+            <button class="bet-btn" id="main-bet-btn" onclick="confirmBet()">ПОСТАВИТЬ</button>
         </div>
-    </div>
-
-    <div class="nav">
-        <div class="nav-item active" onclick="switchView('arena')">АРЕНА</div>
-        <div class="nav-item" onclick="switchView('profile')">ПРОФИЛЬ</div>
     </div>
 </div>
 
 <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Развернуть на весь экран
+    tg.enableClosingConfirmation(); // Подтверждение закрытия
+
     const socket = io();
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    let user = JSON.parse(localStorage.getItem('user_v5')) || {
-        uid: 'u' + Math.floor(Math.random()*100000),
-        name: 'Игрок',
-        avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=' + Math.random(),
-        id: null
+    // Данные пользователя из Telegram
+    const webAppData = tg.initDataUnsafe.user || {
+        id: Math.floor(Math.random() * 1000),
+        first_name: "Игрок",
+        photo_url: "https://api.dicebear.com/7.x/pixel-art/svg?seed=1"
     };
-    let balance = parseFloat(localStorage.getItem('bal_v5')) || 100.0;
-    
+
+    let user = {
+        uid: 'tg_' + webAppData.id,
+        name: webAppData.first_name,
+        avatar: webAppData.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${webAppData.id}`,
+        id: webAppData.id
+    };
+
+    document.getElementById('my-name').innerText = user.name;
+    if(webAppData.photo_url) {
+        document.getElementById('my-avatar').src = user.avatar;
+        document.getElementById('my-avatar').style.display = 'block';
+    }
+
+    let balance = parseFloat(localStorage.getItem('bal_v2')) || 1000.0;
     let game = { players: [], status: 'WAITING', bank: 0 };
-    let ball = { x: 160, y: 160, vx: 0, vy: 0, active: false, trail: [] };
+    let ball = { x: 170, y: 170, vx: 0, vy: 0, active: false, trail: [] };
     let arrowAngle = 0;
     let isAiming = false;
     let selAmt = 0;
     let playerImages = {};
 
-    socket.on('init_auth', (data) => {
-        if (!user.id) { user.id = data.id; saveAll(); }
-        document.getElementById('my-id-val').innerText = user.id;
-        document.getElementById('prof-id-val').innerText = user.id;
-        if (user.id === 1) document.getElementById('admin-box').style.display = 'block';
-    });
+    socket.emit('auth', user);
 
     socket.on('sync', (data) => {
         game = data;
         updateUI();
         game.players.forEach(p => {
-            if(!playerImages[p.uid]) { const img = new Image(); img.src = p.avatar; playerImages[p.uid] = img; }
+            if(!playerImages[p.uid]) {
+                const img = new Image();
+                img.src = p.avatar;
+                playerImages[p.uid] = img;
+            }
         });
     });
 
     socket.on('start_aiming', (data) => {
         ball = { x: data.pos.x, y: data.pos.y, vx: 0, vy: 0, active: true, trail: [] };
         isAiming = true;
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     });
 
     socket.on('launch_ball', () => {
         isAiming = false;
-        ball.vx = Math.cos(arrowAngle) * 15;
-        ball.vy = Math.sin(arrowAngle) * 15;
+        ball.vx = Math.cos(arrowAngle) * 12;
+        ball.vy = Math.sin(arrowAngle) * 12;
     });
 
     socket.on('reset_game', () => {
@@ -160,12 +240,29 @@
         document.getElementById('win-overlay').style.display = 'none';
     });
 
+    function setBet(a) {
+        selAmt = a;
+        if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText) === a));
+    }
+
+    function confirmBet() {
+        if (balance >= selAmt && selAmt > 0) {
+            balance -= selAmt;
+            socket.emit('bet', { ...user, bet: selAmt });
+            saveAll();
+            updateUI();
+            if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        } else {
+            tg.showAlert("Недостаточно средств!");
+        }
+    }
+
+    // Отрисовка (из твоего кода с адаптацией под 340px)
     function drawTerritories() {
         if (game.players.length === 0) return;
-        let x = 0, y = 0, w = 320, h = 320;
+        let x = 0, y = 0, w = 340, h = 340;
         let horizontal = true;
-        
-        // Сортировка: крупнейшие игроки получают первые блоки (углы)
         const sorted = [...game.players].sort((a, b) => b.bet - a.bet);
         let remainingBank = game.bank;
 
@@ -185,75 +282,53 @@
             horizontal = !horizontal;
 
             ctx.fillStyle = p.color;
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = 0.3;
             ctx.fillRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
             ctx.strokeStyle = p.color;
             ctx.lineWidth = 2;
-            ctx.globalAlpha = 0.6;
+            ctx.globalAlpha = 0.5;
             ctx.strokeRect(p.rect.x, p.rect.y, p.rect.w, p.rect.h);
-
-            if (playerImages[p.uid]) {
-                ctx.globalAlpha = 0.15;
-                const size = Math.min(p.rect.w, p.rect.h) * 0.6;
-                ctx.drawImage(playerImages[p.uid], p.rect.x + p.rect.w/2 - size/2, p.rect.y + p.rect.h/2 - size/2, size, size);
-            }
         });
         ctx.globalAlpha = 1;
     }
 
     function drawBall() {
         if (!ball.active) return;
-
-        // Рисуем шлейф (Trail)
-        if (!isAiming) {
-            ball.trail.push({x: ball.x, y: ball.y});
-            if (ball.trail.length > 10) ball.trail.shift();
-            ball.trail.forEach((t, i) => {
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, i * 0.7, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(0, 210, 255, ${i / 15})`;
-                ctx.fill();
-            });
-        }
-
-        // Красивый градиентный шар
-        const grad = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 2, ball.x, ball.y, 9);
-        grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.4, "#00d2ff");
-        grad.addColorStop(1, "#0055ff");
-
+        
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, 9, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
+        ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
         ctx.shadowBlur = 15;
-        ctx.shadowColor = "#00d2ff";
+        ctx.shadowColor = varColor('--blue');
         ctx.fill();
         ctx.shadowBlur = 0;
 
         if (isAiming) {
-            arrowAngle += 0.08;
+            arrowAngle += 0.07;
             ctx.setLineDash([5, 5]);
             ctx.strokeStyle = "white";
             ctx.beginPath();
             ctx.moveTo(ball.x, ball.y);
-            ctx.lineTo(ball.x + Math.cos(arrowAngle) * 45, ball.y + Math.sin(arrowAngle) * 45);
+            ctx.lineTo(ball.x + Math.cos(arrowAngle) * 40, ball.y + Math.sin(arrowAngle) * 40);
             ctx.stroke();
             ctx.setLineDash([]);
         }
     }
 
+    function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
+
     function draw() {
-        ctx.clearRect(0, 0, 320, 320);
+        ctx.clearRect(0, 0, 340, 340);
         drawTerritories();
         drawBall();
 
         if (ball.active && !isAiming) {
             ball.x += ball.vx; ball.y += ball.vy;
-            if (ball.x < 10 || ball.x > 310) ball.vx *= -1;
-            if (ball.y < 10 || ball.y > 310) ball.vy *= -1;
-            ball.vx *= 0.994; ball.vy *= 0.994;
+            if (ball.x < 10 || ball.x > 330) ball.vx *= -1;
+            if (ball.y < 10 || ball.y > 330) ball.vy *= -1;
+            ball.vx *= 0.992; ball.vy *= 0.992;
 
-            if (Math.abs(ball.vx) < 0.12 && !document.getElementById('win-overlay').style.display.includes('flex')) {
+            if (Math.abs(ball.vx) < 0.1 && !document.getElementById('win-overlay').style.display.includes('flex')) {
                 showWinner();
             }
         }
@@ -265,52 +340,45 @@
             ball.x >= p.rect.x && ball.x <= p.rect.x + p.rect.w &&
             ball.y >= p.rect.y && ball.y <= p.rect.y + p.rect.h
         );
-        if (winner && winner.uid === user.uid) { balance += game.bank; saveAll(); }
         if (winner) {
+            if (winner.uid === user.uid) { 
+                balance += game.bank; 
+                saveAll(); 
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            }
             document.getElementById('win-overlay').style.display = 'flex';
             document.getElementById('win-img').src = winner.avatar;
             document.getElementById('win-name').innerText = winner.name;
-            document.getElementById('win-name').style.color = winner.color;
             document.getElementById('win-sum').innerText = `+${game.bank.toFixed(2)} TON`;
         }
     }
 
-    function setBet(a) { selAmt = a; document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', parseInt(c.innerText) === a)); }
-    function confirmBet() {
-        if (balance >= selAmt && selAmt > 0) {
-            balance -= selAmt; socket.emit('bet', { ...user, bet: selAmt });
-            saveAll(); updateUI();
-        }
-    }
-
     function updateUI() {
-        document.getElementById('bal-val').innerText = balance.toFixed(1);
+        document.getElementById('bal-val').innerText = Math.floor(balance);
         document.getElementById('bank-val').innerText = game.bank.toFixed(2);
-        document.getElementById('status-text').innerText = game.status === 'BETTING' ? `СТАРТ ЧЕРЕЗ: ${game.timeLeft}С` : 'ИГРА...';
+        
+        if (game.status === 'BETTING') {
+            document.getElementById('status-text').innerText = `СТАРТ ЧЕРЕЗ: ${game.timeLeft}С`;
+            document.getElementById('main-bet-btn').disabled = false;
+            document.getElementById('main-bet-btn').style.opacity = "1";
+        } else {
+            document.getElementById('status-text').innerText = game.status === 'WAITING' ? 'ОЖИДАНИЕ СТАВОК...' : 'ИГРА В ПРОЦЕССЕ';
+            document.getElementById('main-bet-btn').disabled = true;
+            document.getElementById('main-bet-btn').style.opacity = "0.5";
+        }
         
         document.getElementById('p-list').innerHTML = game.players
             .sort((a,b) => b.bet - a.bet)
             .map(p => `
             <div class="p-item" style="border-left: 4px solid ${p.color}">
-                <div class="p-info">
-                    <span style="color: ${p.color}; font-weight: bold;">${p.name}</span>
-                    <span class="p-chance">Шанс: ${((p.bet/game.bank)*100).toFixed(1)}%</span>
-                </div>
-                <div class="p-bet" style="color: ${p.color}">${p.bet} TON</div>
+                <span>${p.name}</span>
+                <span style="font-weight:900">${p.bet} TON</span>
             </div>
         `).join('');
     }
 
-    function switchView(v) {
-        document.getElementById('view-arena').classList.toggle('active', v === 'arena');
-        document.getElementById('view-profile').classList.toggle('active', v === 'profile');
-    }
+    function saveAll() { localStorage.setItem('bal_v2', balance); }
 
-    function saveProfile() { user.name = document.getElementById('inp-name').value; saveAll(); }
-    function saveAll() { localStorage.setItem('user_v5', JSON.stringify(user)); localStorage.setItem('bal_v5', balance); }
-
-    document.getElementById('prof-preview').src = user.avatar;
-    document.getElementById('inp-name').value = user.name;
     draw();
 </script>
 </body>
