@@ -56,7 +56,6 @@
 </head>
 <body>
 
-<!-- ЭКРАН БЛОКИРОВКИ -->
 <div id="browser-lock">
     <h1 style="color:var(--accent); text-shadow: 0 0 15px var(--accent);">ICE ARENA</h1>
     <p style="opacity:0.8; margin-bottom:30px;">Эта игра доступна только через официальное приложение Telegram.</p>
@@ -127,7 +126,6 @@
 <script>
     const tg = window.Telegram.WebApp;
 
-    // ПРОВЕРКА ОКРУЖЕНИЯ
     if (!tg.initData || tg.initData === "") {
         document.getElementById('game-content').style.display = 'none';
         document.getElementById('browser-lock').style.display = 'flex';
@@ -154,14 +152,16 @@
     const ADMIN_ID = 1046170668;
     const BONUS_INTERVAL = 15 * 60 * 1000;
 
-    if (!localStorage.getItem('init_v8')) {
-        localStorage.setItem('bal_v8', 20.0); 
-        localStorage.setItem('init_v8', 'true');
+    // ОБНУЛЕНИЕ: Перешли на v9, чтобы у всех стало 0 TON
+    if (!localStorage.getItem('init_v9')) {
+        localStorage.setItem('bal_v9', 0.0); 
+        localStorage.setItem('init_v9', 'true');
     }
-    let balance = parseFloat(localStorage.getItem('bal_v8')) || 0;
-    let lastBonus = parseInt(localStorage.getItem('bonus_v8')) || 0;
+    let balance = parseFloat(localStorage.getItem('bal_v9')) || 0;
+    let lastBonus = parseInt(localStorage.getItem('bonus_v9')) || 0;
+    
     let selAmt = 0.5;
-    let srv = { players: [], status: 'WAITING', bank: 0, ball: {x:160, y:160} };
+    let srv = { players: [], status: 'WAITING', bank: 0, ball: {x:160, y:160}, luckyBlock: {active: false} };
     let pImgs = {};
 
     function createSnow() {
@@ -206,7 +206,7 @@
     function confirmBet() {
         if (balance < selAmt) return tg.showAlert("Недостаточно TON");
         if (srv.status !== 'WAITING' && srv.status !== 'COUNTDOWN') return;
-        balance -= selAmt; localStorage.setItem('bal_v8', balance);
+        balance -= selAmt; localStorage.setItem('bal_v9', balance);
         socket.emit('bet', { ...user, bet: selAmt });
         updateUI();
     }
@@ -215,14 +215,21 @@
         const oldStatus = srv.status;
         srv = data;
         if (oldStatus !== 'WINNER' && srv.status === 'WINNER' && srv.winner?.uid === user.uid) {
-            balance += srv.bank; localStorage.setItem('bal_v8', balance);
+            balance += srv.bank; localStorage.setItem('bal_v9', balance);
             tg.HapticFeedback.notificationOccurred('success');
         }
         updateUI();
         srv.players.forEach(p => { if(!pImgs[p.uid]) { const img = new Image(); img.src = p.avatar; pImgs[p.uid] = img; }});
     });
 
-    socket.on('admin_gift', (amt) => { balance += amt; localStorage.setItem('bal_v8', balance); updateUI(); });
+    // УВЕДОМЛЕНИЕ О ЛАКИ БЛОКЕ
+    socket.on('lucky_hit', (type) => {
+        const text = type === 'SWAP' ? "СМЕНА ТЕРРИТОРИЙ ЧЕРЕЗ 3 СЕК!" : "ШАР ОСТАНОВИТСЯ ЧЕРЕЗ 3 СЕК!";
+        tg.showAlert("LUCKY BLOCK: " + text);
+        tg.HapticFeedback.notificationOccurred('warning');
+    });
+
+    socket.on('admin_gift', (amt) => { balance += amt; localStorage.setItem('bal_v9', balance); updateUI(); });
 
     function updateUI() {
         document.getElementById('bal-val').innerText = balance.toFixed(1);
@@ -263,12 +270,14 @@
     function takeBonus() {
         if (Date.now() - lastBonus < BONUS_INTERVAL) return;
         balance += 20; lastBonus = Date.now();
-        localStorage.setItem('bal_v8', balance); localStorage.setItem('bonus_v8', lastBonus);
+        localStorage.setItem('bal_v9', balance); localStorage.setItem('bonus_v9', lastBonus);
         updateProfile(); updateUI();
     }
 
     function draw() {
         ctx.clearRect(0, 0, 320, 320);
+        
+        // РИСУЕМ ТЕРРИТОРИИ
         srv.players.forEach(p => {
             if(!p.rect) return;
             ctx.fillStyle = p.color; ctx.globalAlpha = 0.5;
@@ -282,6 +291,20 @@
                 ctx.restore();
             }
         });
+
+        // РИСУЕМ ЛАКИ БЛОК
+        if (srv.luckyBlock && srv.luckyBlock.active) {
+            ctx.save();
+            ctx.shadowBlur = 15; ctx.shadowColor = "gold";
+            ctx.fillStyle = "#FFD700";
+            ctx.fillRect(srv.luckyBlock.x, srv.luckyBlock.y, 25, 25);
+            ctx.fillStyle = "#000";
+            ctx.font = "bold 20px Arial";
+            ctx.fillText("?", srv.luckyBlock.x + 7, srv.luckyBlock.y + 20);
+            ctx.restore();
+        }
+
+        // РИСУЕМ ШАР
         if (['SPAWNED', 'AIMING', 'FLYING', 'WINNER'].includes(srv.status)) {
             ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = "#00f2fe"; ctx.fillStyle = "#ffffff";
             ctx.beginPath(); ctx.arc(srv.ball.x, srv.ball.y, 10, 0, Math.PI*2); ctx.fill(); ctx.restore();
