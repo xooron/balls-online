@@ -10,40 +10,55 @@
         body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; overflow: hidden; }
         .app { width: 100%; max-width: 400px; height: 100vh; background: var(--bg); display: flex; flex-direction: column; position: relative; }
         
-        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .balance { background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--blue); font-weight: 900; cursor: pointer; }
+        /* Шапка */
+        .header { padding: 15px; display: flex; justify-content: flex-end; align-items: center; }
+        .balance { background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--blue); font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .balance:active { transform: scale(0.9); }
+
+        /* Вкладки */
+        .view { display: none; flex-direction: column; height: 100%; overflow: hidden; padding-bottom: 70px; }
+        .view.active { display: flex; }
+
+        .game-viewport { width: 320px; height: 320px; margin: 0 auto; position: relative; border: 4px solid #1a1a2e; background: #000; overflow: hidden; flex-shrink: 0; }
         
-        .game-viewport { width: 320px; height: 320px; margin: 0 auto; position: relative; border: 4px solid #1a1a2e; background: #000; overflow: hidden; }
-        
-        /* Анимация загрузки */
         .loader-wrap { position: absolute; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.8); z-index: 5; }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(0,210,255,0.1); border-top: 4px solid var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .status-line { text-align: center; margin: 10px 0; font-size: 12px; color: var(--blue); font-weight: bold; }
 
-        .bet-panel { padding: 10px 15px; }
+        .bet-panel { padding: 10px 15px; flex-shrink: 0; }
         .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
-        .chip { background: #111122; border: 2px solid transparent; padding: 12px 0; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; text-align: center; }
-        .chip.active { border-color: var(--blue); }
-        .bet-btn { width: 100%; padding: 18px; border-radius: 15px; background: var(--green); border: none; font-weight: 900; font-size: 18px; cursor: pointer; }
+        .chip { background: #111122; border: 2px solid transparent; padding: 12px 0; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; text-align: center; font-size: 12px; }
+        .chip.active { border-color: var(--blue); background: rgba(0, 210, 255, 0.1); }
+        .bet-btn { width: 100%; padding: 18px; border-radius: 15px; background: var(--green); border: none; font-weight: 900; font-size: 18px; cursor: pointer; color: #000; }
 
-        .players-list { flex-grow: 1; overflow-y: auto; padding: 0 20px; }
+        .players-list { flex-grow: 1; overflow-y: auto; padding: 0 20px; background: rgba(0,0,0,0.2); }
         .p-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #161625; font-size: 13px; }
 
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; text-align: center; }
         
-        .nav { height: 60px; background: #0a0a15; display: flex; border-top: 1px solid #1a1a2e; }
-        .nav-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #555; cursor: pointer; font-weight: bold; }
+        /* Профиль дизайн */
+        .profile-container { padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .prof-ava-big { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--blue); object-fit: cover; }
+        .input-group { width: 100%; text-align: left; }
+        .input-group label { display: block; font-size: 11px; color: #555; margin-bottom: 5px; margin-left: 5px; }
+        .prof-input { width: 100%; background: #111; border: 1px solid #333; padding: 15px; color: white; border-radius: 12px; box-sizing: border-box; font-size: 14px; }
+        .save-btn { width: 100%; padding: 15px; border-radius: 12px; background: var(--blue); border: none; font-weight: bold; cursor: pointer; color: #000; }
+
+        /* Навигация снизу */
+        .nav { position: absolute; bottom: 0; left: 0; right: 0; height: 65px; background: #0a0a15; display: flex; border-top: 1px solid #1a1a2e; z-index: 1000; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #555; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .nav-item.active { color: var(--blue); }
+        .nav-item:active { background: rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
 
 <div class="app">
-    <div id="arena-view" style="display: flex; flex-direction: column; height: 100%;">
+    <!-- ВКЛАДКА АРЕНА -->
+    <div id="view-arena" class="view active">
         <div class="header">
-            <div style="font-size:20px">📦</div>
             <div class="balance" onclick="addMoney()">💎 <span id="bal-val">1000.0</span></div>
         </div>
 
@@ -57,7 +72,7 @@
         <div class="game-viewport">
             <div id="loader" class="loader-wrap">
                 <div class="spinner"></div>
-                <p style="font-size: 10px; margin-top: 10px; color: var(--blue)">ОЖИДАНИЕ ИГРОКОВ</p>
+                <p style="font-size: 10px; margin-top: 10px; color: var(--blue)">ЖДЕМ ОППОНЕНТОВ</p>
             </div>
             <canvas id="gameCanvas" width="320" height="320"></canvas>
             <div id="win-overlay" class="overlay">
@@ -80,9 +95,30 @@
         <div class="players-list" id="p-list"></div>
     </div>
 
+    <!-- ВКЛАДКА ПРОФИЛЬ -->
+    <div id="view-profile" class="view">
+        <div class="profile-container">
+            <img src="" id="prof-preview" class="prof-ava-big">
+            <div style="font-size:10px; color:#333">UID: <span id="my-uid"></span></div>
+            
+            <div class="input-group">
+                <label>ВАШ НИКНЕЙМ</label>
+                <input type="text" id="inp-name" class="prof-input" placeholder="Введите имя...">
+            </div>
+
+            <div class="input-group">
+                <label>URL АВАТАРКИ (ССЫЛКА)</label>
+                <input type="text" id="inp-ava" class="prof-input" placeholder="Вставьте ссылку на фото...">
+            </div>
+
+            <button class="save-btn" onclick="saveProfile()">СОХРАНИТЬ ИЗМЕНЕНИЯ</button>
+        </div>
+    </div>
+
+    <!-- НИЖНЕЕ МЕНЮ -->
     <div class="nav">
-        <div class="nav-item active">АРЕНА</div>
-        <div class="nav-item">ПРОФИЛЬ</div>
+        <div class="nav-item active" id="btn-arena" onclick="switchView('arena')">АРЕНА</div>
+        <div class="nav-item" id="btn-profile" onclick="switchView('profile')">ПРОФИЛЬ</div>
     </div>
 </div>
 
@@ -91,18 +127,46 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
+    // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
     let user = JSON.parse(localStorage.getItem('balls_user')) || {
         uid: 'u' + Math.floor(Math.random() * 1000000),
         name: 'Игрок' + Math.floor(Math.random() * 999),
-        avatar: 'https://i.pravatar.cc/100?u=' + Math.random()
+        avatar: 'https://i.pravatar.cc/150?u=' + Math.random()
     };
     let balance = parseFloat(localStorage.getItem('balls_balance')) || 1000.0;
+    
     let game = { players: [], bank: 0, status: 'WAITING', timeLeft: 15 };
     let ball = { x: 160, y: 160, vx: 0, vy: 0 };
     let selAmt = 0;
-    let playerImages = {}; // Кеш для картинок
+    let playerImages = {};
 
-    function addMoney() { balance += 100; updateUI(); }
+    // Инициализация профиля
+    function initProfile() {
+        document.getElementById('my-uid').innerText = user.uid;
+        document.getElementById('inp-name').value = user.name;
+        document.getElementById('inp-ava').value = user.avatar;
+        document.getElementById('prof-preview').src = user.avatar;
+        updateUI();
+    }
+
+    function switchView(v) {
+        document.getElementById('view-arena').classList.toggle('active', v === 'arena');
+        document.getElementById('view-profile').classList.toggle('active', v === 'profile');
+        document.getElementById('btn-arena').classList.toggle('active', v === 'arena');
+        document.getElementById('btn-profile').classList.toggle('active', v === 'profile');
+    }
+
+    function saveProfile() {
+        user.name = document.getElementById('inp-name').value || user.name;
+        user.avatar = document.getElementById('inp-ava').value || user.avatar;
+        localStorage.setItem('balls_user', JSON.stringify(user));
+        document.getElementById('prof-preview').src = user.avatar;
+        alert('Данные сохранены!');
+        switchView('arena');
+    }
+
+    function addMoney() { balance += 500; updateUI(); saveBalance(); }
+    function saveBalance() { localStorage.setItem('balls_balance', balance); }
 
     function selectChip(amt) {
         selAmt = amt;
@@ -114,14 +178,13 @@
         balance -= selAmt;
         socket.emit('bet', { uid: user.uid, name: user.name, avatar: user.avatar, bet: selAmt });
         selAmt = 0;
-        localStorage.setItem('balls_balance', balance);
+        saveBalance();
         updateUI();
     }
 
     socket.on('sync', (data) => {
         game = data;
         updateUI();
-        // Предзагрузка аватарок
         game.players.forEach(p => {
             if(!playerImages[p.uid]) {
                 const img = new Image();
@@ -150,10 +213,10 @@
 
         if (game.players.length < 2) {
             loader.style.display = 'flex';
-            statusText.innerText = 'ОЖИДАНИЕ ИГРОКОВ...';
+            statusText.innerText = 'ОЖИДАНИЕ ИГРОКОВ (2+)';
         } else {
             loader.style.display = 'none';
-            statusText.innerText = game.status === 'BETTING' ? `ДО НАЧАЛА: ${game.timeLeft}С` : 'ИГРА ИДЕТ!';
+            statusText.innerText = game.status === 'BETTING' ? `ДО СТАРТА: ${game.timeLeft}С` : 'ИГРАЕМ!';
         }
 
         document.getElementById('p-list').innerHTML = game.players.map(p => `
@@ -171,8 +234,6 @@
             let currentA = 0;
             game.players.forEach(p => {
                 const slice = (p.bet / game.bank) * (Math.PI * 2);
-                
-                // Рисуем сектор
                 ctx.beginPath();
                 ctx.moveTo(160, 160);
                 ctx.arc(160, 160, 500, currentA, currentA + slice);
@@ -181,7 +242,6 @@
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
 
-                // Рисуем аватарку в центре сектора
                 const midAngle = currentA + slice / 2;
                 const imgX = 160 + Math.cos(midAngle) * 80;
                 const imgY = 160 + Math.sin(midAngle) * 80;
@@ -194,7 +254,6 @@
                     ctx.drawImage(playerImages[p.uid], imgX - 15, imgY - 15, 30, 30);
                     ctx.restore();
                 }
-
                 currentA += slice;
             });
         }
@@ -214,7 +273,6 @@
             ctx.beginPath(); ctx.arc(160, 160, 8, 0, Math.PI*2);
             ctx.fillStyle = 'white'; ctx.fill();
         }
-        
         requestAnimationFrame(draw);
     }
 
@@ -230,16 +288,13 @@
         let winner = game.players[0];
         for(let p of game.players) {
             let slice = (p.bet / game.bank) * (Math.PI * 2);
-            if(angle >= currentA && angle <= currentA + slice) {
-                winner = p;
-                break;
-            }
+            if(angle >= currentA && angle <= currentA + slice) { winner = p; break; }
             currentA += slice;
         }
 
         if (winner.uid === user.uid) {
             balance += game.bank;
-            localStorage.setItem('balls_balance', balance);
+            saveBalance();
         }
 
         document.getElementById('win-overlay').style.display = 'flex';
@@ -253,8 +308,8 @@
         }, 5000);
     }
 
+    initProfile();
     draw();
 </script>
 </body>
 </html>
-
