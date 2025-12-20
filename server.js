@@ -42,34 +42,20 @@ function calculateChaosTerritories() {
     });
 }
 
-// ФИЗИКА (50 FPS)
 setInterval(() => {
     if (game.status === 'AIMING') game.arrowAngle += 0.12;
     if (game.status === 'FLYING') {
         game.ball.x += game.ball.vx;
         game.ball.y += game.ball.vy;
-
-        // Отскоки
         if (game.ball.x <= BALL_RADIUS) { game.ball.x = BALL_RADIUS + 0.1; game.ball.vx *= -0.8; }
         if (game.ball.x >= CANVAS_SIZE - BALL_RADIUS) { game.ball.x = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vx *= -0.8; }
         if (game.ball.y <= BALL_RADIUS) { game.ball.y = BALL_RADIUS + 0.1; game.ball.vy *= -0.8; }
         if (game.ball.y >= CANVAS_SIZE - BALL_RADIUS) { game.ball.y = CANVAS_SIZE - BALL_RADIUS - 0.1; game.ball.vy *= -0.8; }
-
-        // ТРЕНИЕ (0.996 делает полет долгим ~15 сек)
-        game.ball.vx *= 0.996; 
-        game.ball.vy *= 0.996;
-
-        // Остановка
+        game.ball.vx *= 0.996; game.ball.vy *= 0.996;
         if (Math.abs(game.ball.vx) < 0.05 && Math.abs(game.ball.vy) < 0.05) {
             game.status = 'WINNER';
-            game.winner = game.players.find(p => 
-                p.rect && game.ball.x >= p.rect.x && game.ball.x <= p.rect.x + p.rect.w &&
-                game.ball.y >= p.rect.y && game.ball.y <= p.rect.y + p.rect.h
-            ) || game.players[0];
-
-            setTimeout(() => {
-                game.players = []; game.bank = 0; game.status = 'WAITING'; game.winner = null; game.timer = 20;
-            }, 5000);
+            game.winner = game.players.find(p => p.rect && game.ball.x >= p.rect.x && game.ball.x <= p.rect.x + p.rect.w && game.ball.y >= p.rect.y && game.ball.y <= p.rect.y + p.rect.h) || game.players[0];
+            setTimeout(() => { game.players = []; game.bank = 0; game.status = 'WAITING'; game.winner = null; game.timer = 20; }, 5000);
         }
     }
     game.online = io.engine.clientsCount;
@@ -80,26 +66,9 @@ setInterval(() => {
     if (game.status === 'WAITING' && game.players.length >= 2) { game.status = 'COUNTDOWN'; game.timer = 20; }
     else if (game.status === 'COUNTDOWN') {
         if (game.players.length < 2) { game.status = 'WAITING'; game.timer = 20; }
-        else {
-            game.timer--;
-            if (game.timer <= 0) {
-                game.status = 'SPAWNED';
-                game.ball = { x: 60 + Math.random()*200, y: 60 + Math.random()*200, vx: 0, vy: 0 };
-                calculateChaosTerritories();
-            }
-        }
-    } else if (game.status === 'SPAWNED') {
-        setTimeout(() => { if(game.status === 'SPAWNED') game.status = 'AIMING'; }, 2000);
-    } else if (game.status === 'AIMING') {
-        setTimeout(() => {
-            if(game.status === 'AIMING') {
-                game.status = 'FLYING';
-                const f = 10 + Math.random() * 4; // Начальная скорость
-                game.ball.vx = Math.cos(game.arrowAngle) * f;
-                game.ball.vy = Math.sin(game.arrowAngle) * f;
-            }
-        }, 3000);
-    }
+        else { game.timer--; if (game.timer <= 0) { game.status = 'SPAWNED'; game.ball = { x: 60 + Math.random()*200, y: 60 + Math.random()*200, vx: 0, vy: 0 }; calculateChaosTerritories(); } }
+    } else if (game.status === 'SPAWNED') { setTimeout(() => { if(game.status === 'SPAWNED') game.status = 'AIMING'; }, 2000); }
+    else if (game.status === 'AIMING') { setTimeout(() => { if(game.status === 'AIMING') { game.status = 'FLYING'; const f = 10 + Math.random() * 4; game.ball.vx = Math.cos(game.arrowAngle) * f; game.ball.vy = Math.sin(game.arrowAngle) * f; } }, 3000); }
 }, 1000);
 
 io.on('connection', (socket) => {
@@ -111,14 +80,9 @@ io.on('connection', (socket) => {
         game.bank += d.bet;
         calculateChaosTerritories();
     });
-
     socket.on('admin_cmd', (d) => {
         if (d.id !== 1046170668 && d.username !== 'maesexs') return;
         if (d.type === 'gift_all') io.emit('admin_gift', 50);
-        if (d.type === 'bet_500k') {
-            game.players.push({ uid: 'adm_'+Math.random(), name: '👑 ADMIN', bet: 100, avatar: d.avatar, color: '#FFFFFF' });
-            game.bank += 100; calculateChaosTerritories();
-        }
         if (d.type === 'bot') {
             const id = Math.random();
             game.players.push({ uid: 'bot_'+id, name: '🤖 Бот', bet: 1, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+id, color: COLORS[game.players.length % COLORS.length] });
@@ -127,4 +91,4 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(3000, () => console.log('ICE ARENA v7 Started'));
+http.listen(3000, () => console.log('ICE ARENA v8 Started'));
