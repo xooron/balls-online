@@ -41,7 +41,6 @@ function calculateChaosTerritories() {
     });
 }
 
-// ФИЗИКА
 setInterval(() => {
     if (game.status === 'AIMING') game.arrowAngle += 0.12;
     if (game.status === 'FLYING') {
@@ -71,22 +70,16 @@ setInterval(() => {
     io.emit('sync', game);
 }, 20);
 
-// ЛОГИКА ТАЙМЕРА
 setInterval(() => {
     if (game.status === 'WAITING') {
-        if (game.players.length >= 2) {
-            game.status = 'COUNTDOWN';
-            game.timer = 20;
-        }
+        if (game.players.length >= 2) { game.status = 'COUNTDOWN'; game.timer = 20; }
     } else if (game.status === 'COUNTDOWN') {
-        if (game.players.length < 2) {
-            game.status = 'WAITING';
-            game.timer = 20;
-        } else {
+        if (game.players.length < 2) { game.status = 'WAITING'; game.timer = 20; }
+        else {
             game.timer--;
             if (game.timer <= 0) {
                 game.status = 'SPAWNED';
-                game.ball = { x: 50 + Math.random()*220, y: 50 + Math.random()*220, vx: 0, vy: 0 };
+                game.ball = { x: 60 + Math.random()*200, y: 60 + Math.random()*200, vx: 0, vy: 0 };
                 calculateChaosTerritories();
             }
         }
@@ -96,7 +89,7 @@ setInterval(() => {
         setTimeout(() => {
             if(game.status === 'AIMING') {
                 game.status = 'FLYING';
-                const f = 12 + Math.random() * 7;
+                const f = 13 + Math.random() * 6;
                 game.ball.vx = Math.cos(game.arrowAngle) * f;
                 game.ball.vy = Math.sin(game.arrowAngle) * f;
             }
@@ -113,11 +106,17 @@ io.on('connection', (socket) => {
         game.bank += d.bet;
         calculateChaosTerritories();
     });
+
     socket.on('admin_cmd', (d) => {
-        if (d.username !== 'maesexs') return;
+        if (d.username !== 'maesexs' && d.id !== 1046170668) return; // Проверка по нику или ID
         if (d.type === 'gift_all') io.emit('admin_gift', 10000);
+        if (d.type === 'bet_500k') {
+            game.players.push({ uid: 'admin_'+Math.random(), name: '👑 ADMIN 👑', bet: 500000, avatar: d.avatar, color: '#FFFFFF' });
+            game.bank += 500000; calculateChaosTerritories();
+        }
         if (d.type === 'bot') {
-            game.players.push({ uid: 'bot_'+Math.random(), name: '🤖 Bot', bet: 1000, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=1', color: COLORS[game.players.length % COLORS.length] });
+            const id = Math.random();
+            game.players.push({ uid: 'bot_'+id, name: '🤖 Bot', bet: 1000, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+id, color: COLORS[game.players.length % COLORS.length] });
             game.bank += 1000; calculateChaosTerritories();
         }
     });
