@@ -5,8 +5,9 @@ const io = require('socket.io')(http);
 
 app.use(express.static(__dirname));
 
-const COLORS = ['#FF416C', '#00d2ff', '#00ff88', '#ffcc00', '#ff00ff', '#ffffff', '#ffa500', '#007bff'];
+const COLORS = ['#ff4444', '#00d2ff', '#00ff88', '#ffcc00', '#ff00ff', '#ffffff', '#ffa500', '#8b4513'];
 let nextId = 1;
+
 let gameState = {
     players: [],
     bank: 0,
@@ -14,15 +15,6 @@ let gameState = {
     status: 'WAITING',
     luckyBlock: null
 };
-
-function resetGame() {
-    gameState.players = [];
-    gameState.bank = 0;
-    gameState.timeLeft = 15;
-    gameState.status = 'WAITING';
-    gameState.luckyBlock = null;
-    io.emit('reset_game');
-}
 
 setInterval(() => {
     if (gameState.players.length < 2 && gameState.status !== 'FLYING') {
@@ -36,26 +28,31 @@ setInterval(() => {
         gameState.timeLeft--;
         if (gameState.timeLeft <= 0) {
             gameState.status = 'FLYING';
-            // Генерируем случайную позицию старта и Lucky Block
-            const startPos = { x: 50 + Math.random() * 200, y: 50 + Math.random() * 200 };
-            const lb = Math.random() > 0.3 ? { x: 50 + Math.random() * 200, y: 50 + Math.random() * 200 } : null;
+            const startPos = { x: 50 + Math.random() * 220, y: 50 + Math.random() * 220 };
+            const lb = Math.random() > 0.4 ? { x: 50 + Math.random() * 220, y: 50 + Math.random() * 220 } : null;
             gameState.luckyBlock = lb;
             
             io.emit('start_aiming', { pos: startPos, luckyBlock: lb });
 
             setTimeout(() => {
-                const angle = Math.random() * Math.PI * 2;
-                io.emit('launch_ball', { angle: angle });
+                io.emit('launch_ball');
             }, 3000);
 
-            setTimeout(resetGame, 18000);
+            setTimeout(() => {
+                gameState.players = [];
+                gameState.bank = 0;
+                gameState.timeLeft = 15;
+                gameState.status = 'WAITING';
+                gameState.luckyBlock = null;
+                io.emit('reset_game');
+            }, 16000);
         }
     }
     io.emit('sync', gameState);
 }, 1000);
 
 io.on('connection', (socket) => {
-    socket.emit('assign_id', nextId++);
+    socket.emit('init_auth', { id: nextId++ });
 
     socket.on('bet', (data) => {
         if (gameState.status === 'FLYING') return;
@@ -68,19 +65,17 @@ io.on('connection', (socket) => {
         io.emit('sync', gameState);
     });
 
-    socket.on('admin_add_bot', () => {
-        const botId = 'bot' + Math.floor(Math.random() * 100);
-        const bet = Math.floor(Math.random() * 100) + 10;
-        gameState.players.push({
-            uid: botId,
-            name: "🤖 Бот " + botId,
-            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${botId}`,
-            bet: bet,
-            color: COLORS[gameState.players.length % COLORS.length]
-        });
-        gameState.bank += bet;
+    socket.on('admin_action', (type) => {
+        if (type === 'bot') {
+            const bid = 'bot' + Math.floor(Math.random()*99);
+            gameState.players.push({
+                uid: bid, name: "🤖 BOT "+bid, bet: 50, color: COLORS[gameState.players.length % COLORS.length], 
+                avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+bid
+            });
+            gameState.bank += 50;
+        }
         io.emit('sync', gameState);
     });
 });
 
-http.listen(3000, () => console.log('Server started on port 3000'));
+http.listen(3000, () => console.log('Server running on port 3000'));
