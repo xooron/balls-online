@@ -4,6 +4,7 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
+// Указываем папку со статическими файлами (index.html и т.д.)
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -32,16 +33,24 @@ setInterval(() => {
                 gameState.winningAngle = Math.random() * Math.PI * 2;
                 io.emit('start_game', { angle: gameState.winningAngle });
                 
+                // Время на анимацию полета и показ результата
                 setTimeout(() => {
-                    gameState = { players: [], bank: 0, timeLeft: 15, status: 'BETTING', winningAngle: 0 };
+                    gameState = { 
+                        players: [], 
+                        bank: 0, 
+                        timeLeft: 15, 
+                        status: 'BETTING', 
+                        winningAngle: 0 
+                    };
                     io.emit('reset_game');
                 }, 18000);
             }
         } else {
-            // Если игроков меньше 2, сбрасываем таймер на 15
+            // Если игроков меньше 2, сбрасываем таймер
             gameState.timeLeft = 15;
         }
     }
+    // Рассылаем состояние всем игрокам раз в секунду
     io.emit('sync', gameState);
 }, 1000);
 
@@ -67,10 +76,9 @@ io.on('connection', (socket) => {
     });
 });
 
+// Запуск сервера (ТОЛЬКО ОДИН РАЗ)
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
     console.log('Server started on port ' + PORT);
 });
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(Server started on port ${PORT}));
 
