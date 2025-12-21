@@ -7,8 +7,9 @@ const axios = require('axios');
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// --- НАСТРОЙКИ ---
-const BOT_TOKEN = '8593275304:AAGFWnHOBheYkC4DkKtu0Q-xteKI42fTIPw'; 
+const BOT_TOKEN = 'ВАШ_ТОКЕН_БОТА'; 
+const ADMIN_ID = 1046170668;
+
 const COLORS = ['#FF4757', '#2ED573', '#1E90FF', '#ECCC68', '#70A1FF', '#FF6348', '#00f2fe', '#ffa502', '#ced6e0', '#5352ed'];
 const CANVAS_SIZE = 320;
 const BALL_RADIUS = 10;
@@ -21,27 +22,21 @@ let game = {
     arrowAngle: 0, winner: null, online: 0, launchTime: 0
 };
 
-// --- TELEGRAM STARS API ---
-
-// Создание ссылки на оплату
+// --- API ОПЛАТЫ ---
 app.post('/create-invoice', async (req, res) => {
     const { userId, tonAmount, starsAmount } = req.body;
     try {
         const response = await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
             title: `Пополнение ${tonAmount} TON`,
-            description: `Пакет игровой валюты ICE ARENA`,
+            description: `Пакет валюты для ICE ARENA`,
             payload: JSON.stringify({ uid: userId, amt: tonAmount }),
-            provider_token: "", // Пусто для Stars
-            currency: "XTR",
+            provider_token: "", currency: "XTR",
             prices: [{ label: "Купить", amount: starsAmount }]
         });
         res.json(response.data);
-    } catch (e) {
-        res.status(500).json({ error: "Ошибка счета" });
-    }
+    } catch (e) { res.status(500).json({ error: "Ошибка" }); }
 });
 
-// Вебхук для обработки платежа
 app.post('/webhook', async (req, res) => {
     const update = req.body;
     if (update.pre_checkout_query) {
@@ -56,8 +51,7 @@ app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
 });
 
-// --- ИГРОВАЯ ЛОГИКА (БЕЗ ИЗМЕНЕНИЙ) ---
-
+// --- ЛОГИКА ИГРЫ ---
 function calculateChaosTerritories() {
     if (game.players.length === 0) return;
     let playersToAssign = [...game.players].sort(() => Math.random() - 0.5);
@@ -84,7 +78,7 @@ function checkLuckyCollision() {
         io.emit('lucky_hit', game.luckyBlock.type);
         setTimeout(() => {
             if (game.luckyBlock.type === 'SWAP') calculateChaosTerritories();
-            else game.ball.vx = game.ball.vy = 0;
+            else { game.ball.vx = 0; game.ball.vy = 0; }
             io.emit('sync', game);
         }, 3000);
     }
@@ -96,15 +90,18 @@ setInterval(() => {
         game.ball.x += game.ball.vx; game.ball.y += game.ball.vy;
         if (game.ball.x <= BALL_RADIUS || game.ball.x >= CANVAS_SIZE - BALL_RADIUS) game.ball.vx *= -0.8;
         if (game.ball.y <= BALL_RADIUS || game.ball.y >= CANVAS_SIZE - BALL_RADIUS) game.ball.vy *= -0.8;
+        
         const elapsed = Date.now() - game.launchTime;
         if (elapsed < 11000) { game.ball.vx *= 0.998; game.ball.vy *= 0.998; }
         else if (elapsed < 13000) { game.ball.vx *= 0.92; game.ball.vy *= 0.92; }
         else { game.ball.vx = 0; game.ball.vy = 0; }
+
         checkLuckyCollision();
-        if (elapsed > 12500 && Math.abs(game.ball.vx) < 0.05 && Math.abs(game.ball.vy) < 0.05) {
+
+        if (elapsed > 12500 && Math.abs(game.ball.vx) < 0.1) {
             game.status = 'WINNER';
             game.winner = game.players.find(p => p.rect && game.ball.x >= p.rect.x && game.ball.x <= p.rect.x + p.rect.w && game.ball.y >= p.rect.y && game.ball.y <= p.rect.y + p.rect.h) || game.players[0];
-            setTimeout(() => { game.players = []; game.bank = 0; game.status = 'WAITING'; game.timer = 20; }, 5000);
+            setTimeout(() => { game.players = []; game.bank = 0; game.status = 'WAITING'; game.timer = 20; game.luckyBlock.active = false; }, 5000);
         }
     }
     game.online = io.engine.clientsCount;
@@ -114,19 +111,25 @@ setInterval(() => {
 setInterval(() => {
     if (game.status === 'WAITING' && game.players.length >= 2) { game.status = 'COUNTDOWN'; game.timer = 20; }
     else if (game.status === 'COUNTDOWN') {
-        game.timer--;
-        if (game.timer <= 0) {
-            game.status = 'SPAWNED';
-            game.ball = { x: 160, y: 160, vx: 0, vy: 0 };
-            game.luckyBlock = { x: 50+Math.random()*200, y: 50+Math.random()*200, active: true, type: Math.random()>0.5?'SWAP':'STOP' };
-            calculateChaosTerritories();
-            setTimeout(() => game.status = 'AIMING', 2000);
-            setTimeout(() => {
-                game.status = 'FLYING'; game.launchTime = Date.now();
-                const f = 15; game.ball.vx = Math.cos(game.arrowAngle)*f; game.ball.vy = Math.sin(game.arrowAngle)*f;
-            }, 5000);
+        if (game.players.length < 2) game.status = 'WAITING';
+        else {
+            game.timer--;
+            if (game.timer <= 0) {
+                game.status = 'SPAWNED';
+                game.ball = { x: 60 + Math.random()*200, y: 60 + Math.random()*200, vx: 0, vy: 0 };
+                game.luckyBlock = { x: 40+Math.random()*200, y: 40+Math.random()*200, active: true, type: Math.random()>0.5?'SWAP':'STOP' };
+                calculateChaosTerritories();
+            }
         }
     }
+    else if (game.status === 'SPAWNED') setTimeout(() => { if(game.status === 'SPAWNED') game.status = 'AIMING'; }, 2000);
+    else if (game.status === 'AIMING') setTimeout(() => {
+        if(game.status === 'AIMING') {
+            game.status = 'FLYING'; game.launchTime = Date.now();
+            const f = 14 + Math.random()*4;
+            game.ball.vx = Math.cos(game.arrowAngle)*f; game.ball.vy = Math.sin(game.arrowAngle)*f;
+        }
+    }, 3000);
 }, 1000);
 
 io.on('connection', (socket) => {
@@ -136,6 +139,19 @@ io.on('connection', (socket) => {
         if (p) p.bet += d.bet; else game.players.push({...d, color: COLORS[game.players.length % COLORS.length]});
         game.bank += d.bet; calculateChaosTerritories();
     });
+    socket.on('admin_cmd', (d) => {
+        if (d.id !== ADMIN_ID) return;
+        if (d.type === 'gift_all') io.emit('admin_gift', 50);
+        if (d.type === 'bot') {
+            const id = Math.random();
+            game.players.push({ uid: 'bot_'+id, name: '🤖 Бот', bet: 1, avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed='+id, color: COLORS[game.players.length % COLORS.length] });
+            game.bank += 1; calculateChaosTerritories();
+        }
+    });
+    socket.on('admin_give_target', (d) => {
+        if (d.adminId !== ADMIN_ID) return;
+        io.emit('payment_done', { uid: d.targetUid, amt: parseFloat(d.amount) });
+    });
 });
 
-http.listen(process.env.PORT || 3000, () => console.log('Server running with Stars support'));
+http.listen(process.env.PORT || 3000, () => console.log('ICE ARENA Server Started'));
